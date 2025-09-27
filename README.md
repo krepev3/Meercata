@@ -48,8 +48,13 @@ If you only run Suricata in **AF-PACKET**, **PCAP**, or **IDS sniff-only mode**,
 Ensure the following are installed:
 
 ```bash
-# Core tools
+# Core tools 1 : UFW/IPTABLE
 apt install -y suricata iptables jq vim
+
+and
+
+# Core tools 2 : suricata
+apt install -y suricata
 
 # Optional, for better checklist UI
 apt install -y dialog whiptail
