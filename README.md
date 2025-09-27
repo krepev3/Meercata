@@ -33,6 +33,9 @@ If you only run Suricata in **AF-PACKET**, **PCAP**, or **IDS sniff-only mode**,
 - Live monitoring (`suricatamon`) with colorized, human-readable Suricata events
 - Logs and actions are recorded in `/var/log/suricata-mode.log`
 
+  <img width="907" height="403" alt="image" src="https://github.com/user-attachments/assets/cdc823dc-879a-4d2a-bcda-a402baa5b27c" />
+
+
 ---
 
 ## 📦 Installation
