@@ -1,4 +1,4 @@
-# 🦦 Meercata
+# 🦦 Meercata (suricata-mode) v1.6
 
 **Meercata** = **Meerkat + Suricata**  
 A friendly interactive Bash controller for [Suricata](https://suricata.io/) in **IDS/IPS NFQUEUE mode** with a built-in rules manager and live monitoring.
