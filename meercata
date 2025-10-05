@@ -135,22 +135,48 @@ nft_flush() {
     warn "nftables: table inet suri not present"
   fi
 }
+
+# (UPDATED) queue TCP, UDP, ICMP, and ICMPv6 on prerouting+output
 nft_install_queue_all() {
+  have_nft || { err "nft not found"; return 1; }
+  $NFT_BIN -f - <<EOF
+table inet suri {
+  # Ingress path (covers packets before normal filtering)
+  chain preraw {
+    type filter hook prerouting priority -300; policy accept;
+    meta l4proto { tcp, udp, icmp, icmpv6 } queue num ${QUEUE} bypass
+  }
+
+  # Egress path (locally generated traffic)
+  chain outraw {
+    type filter hook output priority -300; policy accept;
+    meta l4proto { tcp, udp, icmp, icmpv6 } queue num ${QUEUE} bypass
+  }
+}
+EOF
+  ok "nftables: inet/suri installed (queue ${QUEUE} for TCP/UDP/ICMP/ICMPv6 on prerouting+output)"
+}
+
+# (NEW) minimal installer: only TCP 7070 + ICMP/ICMPv6
+nft_install_queue_minimal() {
   have_nft || { err "nft not found"; return 1; }
   $NFT_BIN -f - <<EOF
 table inet suri {
   chain preraw {
     type filter hook prerouting priority -300; policy accept;
-    meta l4proto { tcp, udp } queue num ${QUEUE} bypass
+    tcp dport 7070 queue num ${QUEUE} bypass
+    meta l4proto { icmp, icmpv6 } queue num ${QUEUE} bypass
   }
   chain outraw {
     type filter hook output priority -300; policy accept;
-    meta l4proto { tcp, udp } queue num ${QUEUE} bypass
+    tcp sport 7070 queue num ${QUEUE} bypass
+    meta l4proto { icmp, icmpv6 } queue num ${QUEUE} bypass
   }
 }
 EOF
-  ok "nftables: inet/suri installed (queue ${QUEUE} on prerouting/output for TCP/UDP)"
+  ok "nftables: inet/suri minimal (TCP:7070 + ICMP/ICMPv6 to queue ${QUEUE})"
 }
+
 nft_status() {
   if have_nft; then
     echo "===== nftables (inet suri) ====="
@@ -568,11 +594,12 @@ advanced_menu() {
   echo "7) Backup iptables/ip6tables rules"
   echo "8) Restore iptables/ip6tables rules"
   echo "9) Insert allowlist rule (before NFQUEUE)"
-  echo "10) Install nftables hooks (inet, v4+v6)"
-  echo "11) Remove nftables hooks"
-  echo "12) Show iptables counters"
-  echo "13) Live monitor (suricatamon)"
-  echo "14) Back"
+  echo "10) Install nftables hooks (inet, TCP/UDP/ICMP/ICMPv6)"
+  echo "11) Install nftables hooks (minimal: 7070 + ICMP/ICMPv6)"
+  echo "12) Remove nftables hooks"
+  echo "13) Show iptables counters"
+  echo "14) Live monitor (suricatamon)"
+  echo "15) Back"
   echo "---------------------------------"
 }
 
@@ -595,7 +622,7 @@ while true; do
     5)
       while true; do
         advanced_menu
-        read -rp "Advanced [1-14]: " a
+        read -rp "Advanced [1-15]: " a
         case "$a" in
           1) choose_iface ;;
           2) choose_queue ;;
@@ -607,10 +634,11 @@ while true; do
           8) restore_rules ;;
           9) allowlist_insert ;;
           10) nft_install_queue_all ;;
-          11) nft_flush ;;
-          12) show_counters ;;
-          13) live_monitor ;;
-          14) break ;;
+          11) nft_install_queue_minimal ;;
+          12) nft_flush ;;
+          13) show_counters ;;
+          14) live_monitor ;;
+          15) break ;;
           *) err "Invalid option" ;;
         esac
       done
