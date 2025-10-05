@@ -26,6 +26,7 @@ SURICATAMON_BIN="${SURICATAMON_BIN:-/usr/local/bin/suricatamon}"  # external mon
 HAVE_IP6=1; command -v ip6tables >/dev/null 2>&1 || HAVE_IP6=0
 IPT_V="$(iptables -V 2>/dev/null || true)"
 NFT_BACKEND=0; [[ "$IPT_V" == *"nf_tables"* ]] && NFT_BACKEND=1
+NFT_BIN="$(command -v nft || true)"
 
 # -------- UI helpers --------
 say()  { printf "%b\n" "$*"; }
@@ -124,6 +125,39 @@ allowlist_insert() {
   fi
 }
 
+# -------- nftables (inet) helpers --------
+have_nft() { [[ -n "$NFT_BIN" ]]; }
+nft_flush() {
+  if have_nft && $NFT_BIN list table inet suri >/dev/null 2>&1; then
+    $NFT_BIN delete table inet suri || true
+    ok "nftables: removed table inet suri"
+  else
+    warn "nftables: table inet suri not present"
+  fi
+}
+nft_install_queue_all() {
+  have_nft || { err "nft not found"; return 1; }
+  $NFT_BIN -f - <<EOF
+table inet suri {
+  chain preraw {
+    type filter hook prerouting priority -300; policy accept;
+    meta l4proto { tcp, udp } queue num ${QUEUE} bypass
+  }
+  chain outraw {
+    type filter hook output priority -300; policy accept;
+    meta l4proto { tcp, udp } queue num ${QUEUE} bypass
+  }
+}
+EOF
+  ok "nftables: inet/suri installed (queue ${QUEUE} on prerouting/output for TCP/UDP)"
+}
+nft_status() {
+  if have_nft; then
+    echo "===== nftables (inet suri) ====="
+    $NFT_BIN list table inet suri 2>/dev/null || echo "(no inet suri table)"
+  fi
+}
+
 # -------- Suricata process control --------
 suricata_stop() { systemctl stop suricata 2>/dev/null || true; pkill -x suricata 2>/dev/null || true; }
 
@@ -133,7 +167,7 @@ suricata_ids() {
   echo -e "\033[34m     SURICATA: IDS MODE  \033[0m"
   echo -e "\033[34m (sniff-only, no enforce) \033[0m"
   echo -e "\033[34m=========================\033[0m"
-  suricata_stop; flush_nfq; test_suricata
+  suricata_stop; flush_nfq; nft_flush; test_suricata
   logit "MODE=IDS iface=$IFACE"
   exec suricata -c "$SURICATA_CFG" -i "$IFACE"
 }
@@ -144,11 +178,18 @@ suricata_ips_all() {
   echo -e "\033[31m   SURICATA: IPS-ALL MODE   \033[0m"
   echo -e "\033[31m (inline enforce via NFQUEUE)\033[0m"
   echo -e "\033[31m============================\033[0m"
-  suricata_stop; flush_nfq; test_suricata; ensure_fail_open_on
-  insert_lo_accepts_v4; insert_lo_accepts_v6
-  queue_all_v4; queue_all_v6
-  ok "NFQUEUE hooks installed (INPUT/OUTPUT/FORWARD)"
-  logit "MODE=IPS-ALL iface=$IFACE queue=$QUEUE"
+  suricata_stop; flush_nfq; nft_flush; test_suricata; ensure_fail_open_on
+
+  if have_nft; then
+    nft_install_queue_all
+    ok "Using nftables inet hooks (covers IPv4+IPv6)."
+  else
+    insert_lo_accepts_v4; insert_lo_accepts_v6
+    queue_all_v4; queue_all_v6
+    ok "Using legacy iptables/ip6tables hooks (INPUT/OUTPUT/FORWARD)."
+  fi
+
+  logit "MODE=IPS-ALL iface=$IFACE queue=$QUEUE backend=$([[ -n "$NFT_BIN" ]] && echo nft || echo xt))"
   exec suricata -c "$SURICATA_CFG" -q "$QUEUE"
 }
 
@@ -424,6 +465,8 @@ status_show() {
   echo "===== NFQUEUE (IPv4) ====="; iptables -S | grep -n NFQUEUE || echo "(none)"
   if [[ $HAVE_IP6 -eq 1 ]]; then echo; echo "===== NFQUEUE (IPv6) ====="; ip6tables -S | grep -n NFQUEUE || echo "(none)"; fi
   echo
+  nft_status
+  echo
   echo "===== ENV ====="
   echo "IFACE=$IFACE  QUEUE=$QUEUE  CFG=$SURICATA_CFG"
   echo "iptables backend: $IPT_V"; [[ $NFT_BACKEND -eq 1 ]] && warn "iptables-nft backend detected."
@@ -433,6 +476,8 @@ status_show() {
     echo "fail-open: (not supported)"
   fi
 }
+
+show_counters() { iptables -vnL; [[ $HAVE_IP6 -eq 1 ]] && { echo; ip6tables -vnL; } || true; }
 
 # -------- Live monitor (external suricatamon) --------
 live_monitor() {
@@ -451,8 +496,6 @@ live_monitor() {
     tail -n 200 "$log"
   fi
 }
-
-show_counters() { iptables -vnL; [[ $HAVE_IP6 -eq 1 ]] && { echo; ip6tables -vnL; } || true; }
 
 # -------- Boot integration (IPS-ALL service) --------
 install_boot_ips_all() {
@@ -525,9 +568,11 @@ advanced_menu() {
   echo "7) Backup iptables/ip6tables rules"
   echo "8) Restore iptables/ip6tables rules"
   echo "9) Insert allowlist rule (before NFQUEUE)"
-  echo "10) Show iptables counters"
-  echo "11) Live monitor (suricatamon)"
-  echo "12) Back"
+  echo "10) Install nftables hooks (inet, v4+v6)"
+  echo "11) Remove nftables hooks"
+  echo "12) Show iptables counters"
+  echo "13) Live monitor (suricatamon)"
+  echo "14) Back"
   echo "---------------------------------"
 }
 
@@ -550,7 +595,7 @@ while true; do
     5)
       while true; do
         advanced_menu
-        read -rp "Advanced [1-12]: " a
+        read -rp "Advanced [1-14]: " a
         case "$a" in
           1) choose_iface ;;
           2) choose_queue ;;
@@ -561,9 +606,11 @@ while true; do
           7) backup_rules ;;
           8) restore_rules ;;
           9) allowlist_insert ;;
-         10) show_counters ;;
-         11) live_monitor ;;
-         12) break ;;
+          10) nft_install_queue_all ;;
+          11) nft_flush ;;
+          12) show_counters ;;
+          13) live_monitor ;;
+          14) break ;;
           *) err "Invalid option" ;;
         esac
       done
