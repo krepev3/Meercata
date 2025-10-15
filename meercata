@@ -19,8 +19,11 @@ IFACE="${IFACE:-${IFACE_DEFAULT:-}}"
 QUEUE="${QUEUE:-0}"
 XTWAIT="--wait"
 LOGFILE="${LOGFILE:-/var/log/suricata-mode.log}"
-EDITOR_BIN="${EDITOR:-vim}"                                  # default editor
+EDITOR_BIN="${EDITOR:-vim}"                                       # default editor
 SURICATAMON_BIN="${SURICATAMON_BIN:-/usr/local/bin/suricatamon}"  # external monitor
+
+# Packet-hook backend preference: auto | xt | nft
+BACKEND="${BACKEND:-auto}"
 
 # -------- Detect IPv6 & iptables backend --------
 HAVE_IP6=1; command -v ip6tables >/dev/null 2>&1 || HAVE_IP6=0
@@ -60,6 +63,27 @@ choose_queue() {
   read -rp "NFQUEUE number [${QUEUE}]: " ans || true
   [[ -n "${ans:-}" && "$ans" =~ ^[0-9]+$ ]] && QUEUE="$ans"
   ok "QUEUE set to $QUEUE"; logit "QUEUE=$QUEUE"
+}
+
+# -------- Backend helpers --------
+backend_valid() {
+  case "${BACKEND}" in auto|xt|nft) return 0;; *) return 1;; esac
+}
+describe_backend() {
+  case "${BACKEND}" in
+    auto) echo "auto (prefer nft if present, else xtables)";;
+    xt)   echo "xtables (iptables/ip6tables)";;
+    nft)  echo "nftables (inet table hooks)";;
+  esac
+}
+choose_backend() {
+  say "Current backend: $(describe_backend)"
+  read -rp "Choose backend [auto/xt/nft] (default: ${BACKEND}): " ans || true
+  ans="${ans:-$BACKEND}"
+  case "${ans,,}" in
+    auto|xt|nft) BACKEND="${ans,,}"; ok "Backend set to: $(describe_backend)"; logit "backend=$BACKEND";;
+    *) warn "Invalid choice. Keeping: $(describe_backend)";;
+  esac
 }
 
 # -------- Suricata checks --------
@@ -206,16 +230,39 @@ suricata_ips_all() {
   echo -e "\033[31m============================\033[0m"
   suricata_stop; flush_nfq; nft_flush; test_suricata; ensure_fail_open_on
 
-  if have_nft; then
-    nft_install_queue_all
-    ok "Using nftables inet hooks (covers IPv4+IPv6)."
-  else
-    insert_lo_accepts_v4; insert_lo_accepts_v6
-    queue_all_v4; queue_all_v6
-    ok "Using legacy iptables/ip6tables hooks (INPUT/OUTPUT/FORWARD)."
-  fi
+  # Honor backend preference
+  local used_backend=""
+  case "${BACKEND}" in
+    nft)
+      if have_nft; then
+        nft_install_queue_all
+        ok "Using nftables inet hooks (forced)."
+        used_backend="nft"
+      else
+        err "Requested nft backend but 'nft' not found. Abort."; return 1
+      fi
+      ;;
+    xt)
+      insert_lo_accepts_v4; insert_lo_accepts_v6
+      queue_all_v4; queue_all_v6
+      ok "Using xtables hooks (forced)."
+      used_backend="xt"
+      ;;
+    auto|*)
+      if have_nft; then
+        nft_install_queue_all
+        ok "Using nftables inet hooks (auto)."
+        used_backend="nft"
+      else
+        insert_lo_accepts_v4; insert_lo_accepts_v6
+        queue_all_v4; queue_all_v6
+        ok "Using xtables hooks (auto fallback)."
+        used_backend="xt"
+      fi
+      ;;
+  esac
 
-  logit "MODE=IPS-ALL iface=$IFACE queue=$QUEUE backend=$([[ -n "$NFT_BIN" ]] && echo nft || echo xt))"
+  logit "MODE=IPS-ALL iface=$IFACE queue=$QUEUE backend=${used_backend:-unknown}"
   exec suricata -c "$SURICATA_CFG" -q "$QUEUE"
 }
 
@@ -272,7 +319,7 @@ _set_rulefile_state() {
       line=raw
       gsub(/["'\''"]/, "", line)
       l=line
-      sub(/^[ \t]*#?[ \t]*-[ \t]*/, "", l)
+      sub(/^[ \t]*#?[ \t]*/ , "", l); sub(/^[ \t]*-[ \t]*/ , "", l)
       sub(/[ \t]+#.*/, "", l)
       if (l == target) {
         if (desired == "enabled") {
@@ -461,27 +508,6 @@ _open_rulefiles_vim() {
   ((${#paths[@]})) && "$EDITOR_BIN" "${paths[@]}"
 }
 
-# -------- Menus: rules --------
-rules_insight_menu() { _rules_insight; say; read -rp "Press Enter to continue…" _ || true; }
-
-edit_rulefiles_menu() {
-  while true; do
-    say; say "----- Edit rule-files -----"
-    say "1) Enable/Disable via CHECKLIST"
-    say "2) Open rule-file(s) in editor ($EDITOR_BIN)"
-    say "3) Reload Suricata"
-    say "4) Back"
-    read -rp "Select [1-4]: " opt || true
-    case "$opt" in
-      1) _checklist_enable_disable ;;
-      2) _open_rulefiles_vim ;;
-      3) systemctl reload suricata 2>/dev/null || systemctl restart suricata 2>/dev/null || true; ok "Suricata reloaded/restarted" ;;
-      4|"") break ;;
-      *) err "Invalid option" ;;
-    esac
-  done
-}
-
 # -------- Status / Diagnostics --------
 status_show() {
   echo "===== SURICATA STATUS ====="
@@ -496,6 +522,11 @@ status_show() {
   echo "===== ENV ====="
   echo "IFACE=$IFACE  QUEUE=$QUEUE  CFG=$SURICATA_CFG"
   echo "iptables backend: $IPT_V"; [[ $NFT_BACKEND -eq 1 ]] && warn "iptables-nft backend detected."
+  if backend_valid; then
+    echo "backend preference: $(describe_backend)"
+  else
+    echo "backend preference: (invalid: ${BACKEND})"
+  fi
   if sysctl -a 2>/dev/null | grep -q '^net.netfilter.nf_queue_bypass'; then
     echo "fail-open: $(sysctl -n net.netfilter.nf_queue_bypass 2>/dev/null)"
   else
@@ -600,6 +631,7 @@ advanced_menu() {
   echo "13) Show iptables counters"
   echo "14) Live monitor (suricatamon)"
   echo "15) Back"
+  echo "16) Choose backend (current: $(describe_backend))"
   echo "---------------------------------"
 }
 
@@ -622,7 +654,7 @@ while true; do
     5)
       while true; do
         advanced_menu
-        read -rp "Advanced [1-15]: " a
+        read -rp "Advanced [1-16]: " a
         case "$a" in
           1) choose_iface ;;
           2) choose_queue ;;
@@ -639,12 +671,29 @@ while true; do
           13) show_counters ;;
           14) live_monitor ;;
           15) break ;;
+          16) choose_backend ;;
           *) err "Invalid option" ;;
         esac
       done
       ;;
-    6) rules_insight_menu ;;
-    7) edit_rulefiles_menu ;;
+    6) _rules_insight; say; read -rp "Press Enter to continue…" _ || true ;;
+    7) 
+      while true; do
+        say; say "----- Edit rule-files -----"
+        say "1) Enable/Disable via CHECKLIST"
+        say "2) Open rule-file(s) in editor ($EDITOR_BIN)"
+        say "3) Reload Suricata"
+        say "4) Back"
+        read -rp "Select [1-4]: " opt2 || true
+        case "$opt2" in
+          1) _checklist_enable_disable ;;
+          2) _open_rulefiles_vim ;;
+          3) systemctl reload suricata 2>/dev/null || systemctl restart suricata 2>/dev/null || true; ok "Suricata reloaded/restarted" ;;
+          4|"") break ;;
+          *) err "Invalid option" ;;
+        esac
+      done
+      ;;
     8) exit 0 ;;
     *) err "Invalid option" ;;
   esac
