@@ -1,102 +1,79 @@
 #!/usr/bin/env bash
-# suricata-mode: interactive IDS/IPS switcher for Suricata (NFQUEUE)
-# Core: IDS (sniff-only), IPS-ALL (enforce), Flush, Status
-# Advanced: iface/queue, fail-open, boot auto-start, allowlist, backup/restore, counters, live monitor
-# Rules:
-#   - Rules Insight
-#   - Edit rule-files: CHECKLIST (dialog/whiptail/plain) + multi-open in vim
-# Notes:
-#   - mawk/busybox-safe regexes ([ \t] instead of [:space:])
-#   - awk state var INBLK (avoid 'in')
-#   - default editor is vim (override by exporting EDITOR)
+# meercata: interactive IDS/IPS switcher for Suricata (NFQUEUE)
+#
+# Features
+#   - Modes: IDS (sniff-only), IPS-ALL (inline via NFQUEUE)
+#   - Packet hook backends: auto | xtables | nftables
+#   - Flush hooks, status, counters, live monitor (suricatamon)
+#   - Advanced: interface & queue picker, fail-open toggle, boot autostart
+#   - Rules: rule-files insight, enable/disable via dialog/whiptail/plain, open in $EDITOR
+#   - Backup/restore iptables rules; allowlist helper
+#
+# Notes
+#   - Busybox/mawk-safe regexes; no GNU awk extensions required
+#   - Default editor is vim (override via EDITOR)
+#   - Requires: suricata, iptables/ip6tables (or nft), systemd (optional), dialog/whiptail (optional)
 
 set -euo pipefail
+IFS=$'\n\t'
 
-# -------- Defaults (env-overridable) --------
+# -------- Constants / Defaults (env-overridable) --------
 SURICATA_CFG="${SURICATA_CFG:-/etc/suricata/suricata.yaml}"
-IFACE_DEFAULT="$(ip route | awk '/default/ {print $5; exit}')"
-IFACE="${IFACE:-${IFACE_DEFAULT:-}}"
+EDITOR_BIN="${EDITOR:-vim}"
+SURICATAMON_BIN="${SURICATAMON_BIN:-/usr/local/bin/suricatamon}"
+LOGFILE="${LOGFILE:-/var/log/suricata-mode.log}"
+BACKEND="${BACKEND:-auto}"           # auto|xt|nft
 QUEUE="${QUEUE:-0}"
 XTWAIT="--wait"
-LOGFILE="${LOGFILE:-/var/log/suricata-mode.log}"
-EDITOR_BIN="${EDITOR:-vim}"                                       # default editor
-SURICATAMON_BIN="${SURICATAMON_BIN:-/usr/local/bin/suricatamon}"  # external monitor
 
-# Packet-hook backend preference: auto | xt | nft
-BACKEND="${BACKEND:-auto}"
+# Interface autodetect (best-effort)
+IFACE_DEFAULT="$(ip route 2>/dev/null | awk '/default/ {print $5; exit}')"
+IFACE="${IFACE:-${IFACE_DEFAULT:-}}"
 
-# -------- Detect IPv6 & iptables backend --------
+# Capability probes
 HAVE_IP6=1; command -v ip6tables >/dev/null 2>&1 || HAVE_IP6=0
 IPT_V="$(iptables -V 2>/dev/null || true)"
-NFT_BACKEND=0; [[ "$IPT_V" == *"nf_tables"* ]] && NFT_BACKEND=1
 NFT_BIN="$(command -v nft || true)"
 
 # -------- UI helpers --------
-say()  { printf "%b\n" "$*"; }
-ok()   { printf "\033[32m[OK]\033[0m %b\n" "$*"; }
-warn() { printf "\033[33m[WARN]\033[0m %b\n" "$*"; }
-err()  { printf "\033[31m[ERR]\033[0m %b\n" "$*" >&2; }
+C_RESET=$'\033[0m'; C_OK=$'\033[32m'; C_WARN=$'\033[33m'; C_ERR=$'\033[31m'; C_HEAD=$'\033[34m'; C_BANNER=$'\033[1;36m'
+msg()  { printf "%s\n" "$*"; }
+ok()   { printf "%b[OK]%b %s\n"   "$C_OK"   "$C_RESET" "$*"; }
+warn() { printf "%b[WARN]%b %s\n" "$C_WARN" "$C_RESET" "$*"; }
+err()  { printf "%b[ERR]%b %s\n"  "$C_ERR"  "$C_RESET" "$*" >&2; }
 logit(){ printf "[%(%F %T)T] %s\n" -1 "$*" >>"$LOGFILE" 2>/dev/null || true; }
 
-banner_meercata() {
-  printf "\033[1;36m"
+banner() {
+  printf "%b" "$C_BANNER"
   cat <<'EOF'
-|  \/  |  ___   ___  _ __  ___  __ _ | |_  __ _ 
-| |\/| | / _ \ / _ \| '__|/ __|/ _` || __|/ _` |
-| |  | ||  __/|  __/| |  | (__| (_| || |_| (_| |
-|_|  |_| \___| \___||_|   \___|\__,_| \__|\__,_|
-                                                
+  |  \/  |  ___   ___  _ __  ___  __ _ | |_  __ _ 
+  | |\/| | / _ \ / _ \| '__|/ __|/ _` || __|/ _` |
+  | |  | ||  __/|  __/| |  | (__| (_| || |_| (_| |
+  |_|  |_| \___| \___||_|   \___|\__,_| \__|\__,_| 
 EOF
-  printf "\033[0m"
+  printf "%b" "$C_RESET"
 }
 
 need_root() { if [[ ${EUID:-$(id -u)} -ne 0 ]]; then err "Run as root."; exit 1; fi; }
-
-choose_iface() {
-  say "Detected default IFACE: ${IFACE_DEFAULT:-<none>}"
-  read -rp "Interface to use [${IFACE:-${IFACE_DEFAULT:-eth0}}]: " ans || true
-  IFACE="${ans:-${IFACE:-${IFACE_DEFAULT:-eth0}}}"
-  ok "IFACE set to $IFACE"; logit "IFACE=$IFACE"
-}
-
-choose_queue() {
-  read -rp "NFQUEUE number [${QUEUE}]: " ans || true
-  [[ -n "${ans:-}" && "$ans" =~ ^[0-9]+$ ]] && QUEUE="$ans"
-  ok "QUEUE set to $QUEUE"; logit "QUEUE=$QUEUE"
-}
+require()  { command -v "$1" >/dev/null 2>&1 || { err "Missing dependency: $1"; exit 1; }; }
 
 # -------- Backend helpers --------
-backend_valid() {
-  case "${BACKEND}" in auto|xt|nft) return 0;; *) return 1;; esac
-}
-describe_backend() {
-  case "${BACKEND}" in
-    auto) echo "auto (prefer nft if present, else xtables)";;
-    xt)   echo "xtables (iptables/ip6tables)";;
-    nft)  echo "nftables (inet table hooks)";;
-  esac
-}
-choose_backend() {
-  say "Current backend: $(describe_backend)"
-  read -rp "Choose backend [auto/xt/nft] (default: ${BACKEND}): " ans || true
-  ans="${ans:-$BACKEND}"
-  case "${ans,,}" in
-    auto|xt|nft) BACKEND="${ans,,}"; ok "Backend set to: $(describe_backend)"; logit "backend=$BACKEND";;
-    *) warn "Invalid choice. Keeping: $(describe_backend)";;
-  esac
-}
+backend_valid()    { case "$BACKEND" in auto|xt|nft) return 0;; *) return 1;; esac; }
+describe_backend() { case "$BACKEND" in auto) echo "auto (prefer nft if present, else xtables)";; xt) echo "xtables (iptables/ip6tables)";; nft) echo "nftables (inet table hooks)";; esac; }
+have_nft()         { [[ -n "$NFT_BIN" ]]; }
 
 # -------- Suricata checks --------
 test_suricata() {
-  say "[*] Testing Suricata configuration: $SURICATA_CFG"
+  msg "[*] Testing Suricata config: $SURICATA_CFG"
   suricata -T -c "$SURICATA_CFG" >/dev/null
   ok "Suricata config OK"
 }
 
-ensure_fail_open_on() {
+ensure_fail_open_on()  {
   if sysctl -a 2>/dev/null | grep -q '^net.netfilter.nf_queue_bypass'; then
     sysctl -q net.netfilter.nf_queue_bypass=1 || true
-    ok "Fail-open enabled (nf_queue_bypass=1)"; logit "fail-open=1"
+    ok "Fail-open enabled (nf_queue_bypass=1)"
+    logit "fail-open=1"
   else
     warn "Fail-open sysctl not available on this kernel."
   fi
@@ -104,53 +81,77 @@ ensure_fail_open_on() {
 ensure_fail_open_off() {
   if sysctl -a 2>/dev/null | grep -q '^net.netfilter.nf_queue_bypass'; then
     sysctl -q net.netfilter.nf_queue_bypass=0 || true
-    ok "Fail-open disabled (nf_queue_bypass=0)"; logit "fail-open=0"
+    ok "Fail-open disabled (nf_queue_bypass=0)"
+    logit "fail-open=0"
   fi
 }
 
 # -------- iptables helpers --------
-flush_nfq_v4() {
-  iptables  $XTWAIT -D INPUT   -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  iptables  $XTWAIT -D OUTPUT  -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  iptables  $XTWAIT -D FORWARD -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  iptables  $XTWAIT -D INPUT  -i lo -j ACCEPT 2>/dev/null || true
-  iptables  $XTWAIT -D OUTPUT -o lo -j ACCEPT 2>/dev/null || true
-}
-flush_nfq_v6() {
-  [[ $HAVE_IP6 -eq 1 ]] || return 0
-  ip6tables $XTWAIT -D INPUT   -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  ip6tables $XTWAIT -D OUTPUT  -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  ip6tables $XTWAIT -D FORWARD -j NFQUEUE --queue-num "$QUEUE" 2>/dev/null || true
-  ip6tables $XTWAIT -D INPUT  -i lo -j ACCEPT 2>/dev/null || true
-  ip6tables $XTWAIT -D OUTPUT -o lo -j ACCEPT 2>/dev/null || true
-}
-flush_nfq() { say "[*] Flushing NFQUEUE hooks…"; flush_nfq_v4; flush_nfq_v6; ok "NFQUEUE hooks removed"; logit "NFQUEUE flushed for queue=$QUEUE"; }
+ipt_del_v4() { iptables $XTWAIT -D "$@" 2>/dev/null || true; }
+ipt_del_v6() { [[ $HAVE_IP6 -eq 1 ]] && ip6tables $XTWAIT -D "$@" 2>/dev/null || true; }
+ipt_ins_v4() { iptables $XTWAIT -I "$@"; }
+ipt_ins_v6() { [[ $HAVE_IP6 -eq 1 ]] && ip6tables $XTWAIT -I "$@"; }
 
-insert_lo_accepts_v4() { iptables  $XTWAIT -I INPUT 1 -i lo -j ACCEPT; iptables  $XTWAIT -I OUTPUT 1 -o lo -j ACCEPT; }
-insert_lo_accepts_v6() { [[ $HAVE_IP6 -eq 1 ]] && { ip6tables $XTWAIT -I INPUT 1 -i lo -j ACCEPT; ip6tables $XTWAIT -I OUTPUT 1 -o lo -j ACCEPT; } || true; }
+flush_nfq() {
+  msg "[*] Flushing NFQUEUE hooks…"
+  ipt_del_v4 INPUT   -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v4 OUTPUT  -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v4 FORWARD -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v4 INPUT  -i lo -j ACCEPT
+  ipt_del_v4 OUTPUT -o lo -j ACCEPT
+  ipt_del_v6 INPUT   -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v6 OUTPUT  -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v6 FORWARD -j NFQUEUE --queue-num "$QUEUE"
+  ipt_del_v6 INPUT  -i lo -j ACCEPT
+  ipt_del_v6 OUTPUT -o lo -j ACCEPT
+  ok "NFQUEUE hooks removed"
+  logit "NFQUEUE flushed queue=$QUEUE"
+}
 
-queue_all_v4() { iptables  $XTWAIT -I INPUT -j NFQUEUE --queue-num "$QUEUE"; iptables  $XTWAIT -I OUTPUT -j NFQUEUE --queue-num "$QUEUE"; iptables  $XTWAIT -I FORWARD -j NFQUEUE --queue-num "$QUEUE"; }
-queue_all_v6() { [[ $HAVE_IP6 -eq 1 ]] && { ip6tables $XTWAIT -I INPUT -j NFQUEUE --queue-num "$QUEUE"; ip6tables $XTWAIT -I OUTPUT -j NFQUEUE --queue-num "$QUEUE"; ip6tables $XTWAIT -I FORWARD -j NFQUEUE --queue-num "$QUEUE"; } || true; }
+queue_all_xt() {
+  ipt_ins_v4 INPUT   1 -j NFQUEUE --queue-num "$QUEUE"
+  ipt_ins_v4 OUTPUT  1 -j NFQUEUE --queue-num "$QUEUE"
+  ipt_ins_v4 FORWARD 1 -j NFQUEUE --queue-num "$QUEUE"
+  ipt_ins_v6 INPUT   1 -j NFQUEUE --queue-num "$QUEUE"
+  ipt_ins_v6 OUTPUT  1 -j NFQUEUE --queue-num "$QUEUE"
+  ipt_ins_v6 FORWARD 1 -j NFQUEUE --queue-num "$QUEUE"
+}
+
+insert_lo_accepts() {
+  ipt_ins_v4 INPUT  1 -i lo -j ACCEPT
+  ipt_ins_v4 OUTPUT 1 -o lo -j ACCEPT
+  ipt_ins_v6 INPUT  1 -i lo -j ACCEPT
+  ipt_ins_v6 OUTPUT 1 -o lo -j ACCEPT
+}
 
 allowlist_insert() {
   read -rp "Direction (in/out/forward) [in]: " dir; dir="${dir:-in}"
   read -rp "Protocol (tcp/udp/all) [all]: " proto; proto="${proto:-all}"
   read -rp "Address (IP/CIDR) to allow (e.g., 1.2.3.4 or 10.0.0.0/24): " addr
   read -rp "Port (blank for any): " port || true
-  local chain flagproto="" flagport=""
-  case "$dir" in in) chain="INPUT";; out) chain="OUTPUT";; forward) chain="FORWARD";; *) err "Invalid direction"; return;; esac
-  [[ "$proto" != "all" ]] && flagproto="-p $proto"
-  [[ -n "$port" ]] && flagport="--dport $port"
-  iptables $XTWAIT -I "$chain" 1 $flagproto ${addr:+-s "$addr"} $flagport -j ACCEPT
-  ok "IPv4 allowlisted at top of $chain"; logit "allowlist v4 $chain proto=$proto addr=$addr port=${port:-any}"
+
+  local chain flagproto=() flagport=()
+  case "$dir" in
+    in) chain=INPUT ;;
+    out) chain=OUTPUT ;;
+    forward) chain=FORWARD ;;
+    *) err "Invalid direction"; return ;;
+  esac
+  [[ "$proto" != all ]] && flagproto=( -p "$proto" )
+  [[ -n "${port:-}" ]] && flagport=( --dport "$port" )
+
+  iptables $XTWAIT -I "$chain" 1 "${flagproto[@]}" ${addr:+-s "$addr"} "${flagport[@]}" -j ACCEPT
+  ok "IPv4 allowlisted at top of $chain"
+  logit "allowlist v4 $chain proto=$proto addr=$addr port=${port:-any}"
+
   if [[ $HAVE_IP6 -eq 1 ]]; then
-    ip6tables $XTWAIT -I "$chain" 1 $flagproto ${addr:+-s "$addr"} $flagport -j ACCEPT || true
-    ok "IPv6 allowlisted at top of $chain"; logit "allowlist v6 $chain proto=$proto addr=$addr port=${port:-any}"
+    ip6tables $XTWAIT -I "$chain" 1 "${flagproto[@]}" ${addr:+-s "$addr"} "${flagport[@]}" -j ACCEPT || true
+    ok "IPv6 allowlisted at top of $chain"
+    logit "allowlist v6 $chain proto=$proto addr=$addr port=${port:-any}"
   fi
 }
 
-# -------- nftables (inet) helpers --------
-have_nft() { [[ -n "$NFT_BIN" ]]; }
+# -------- nftables helpers --------
 nft_flush() {
   if have_nft && $NFT_BIN list table inet suri >/dev/null 2>&1; then
     $NFT_BIN delete table inet suri || true
@@ -160,28 +161,23 @@ nft_flush() {
   fi
 }
 
-# (UPDATED) queue TCP, UDP, ICMP, and ICMPv6 on prerouting+output
 nft_install_queue_all() {
   have_nft || { err "nft not found"; return 1; }
   $NFT_BIN -f - <<EOF
 table inet suri {
-  # Ingress path (covers packets before normal filtering)
   chain preraw {
     type filter hook prerouting priority -300; policy accept;
     meta l4proto { tcp, udp, icmp, icmpv6 } queue num ${QUEUE} bypass
   }
-
-  # Egress path (locally generated traffic)
   chain outraw {
     type filter hook output priority -300; policy accept;
     meta l4proto { tcp, udp, icmp, icmpv6 } queue num ${QUEUE} bypass
   }
 }
 EOF
-  ok "nftables: inet/suri installed (queue ${QUEUE} for TCP/UDP/ICMP/ICMPv6 on prerouting+output)"
+  ok "nftables: inet/suri installed (queue ${QUEUE} on prerouting+output)"
 }
 
-# (NEW) minimal installer: only TCP 7070 + ICMP/ICMPv6
 nft_install_queue_minimal() {
   have_nft || { err "nft not found"; return 1; }
   $NFT_BIN -f - <<EOF
@@ -198,7 +194,7 @@ table inet suri {
   }
 }
 EOF
-  ok "nftables: inet/suri minimal (TCP:7070 + ICMP/ICMPv6 to queue ${QUEUE})"
+  ok "nftables: inet/suri minimal (TCP:7070 + ICMP/ICMPv6)"
 }
 
 nft_status() {
@@ -212,52 +208,38 @@ nft_status() {
 suricata_stop() { systemctl stop suricata 2>/dev/null || true; pkill -x suricata 2>/dev/null || true; }
 
 suricata_ids() {
-  [[ -n "$IFACE" ]] || choose_iface
-  echo -e "\033[34m=========================\033[0m"
-  echo -e "\033[34m     SURICATA: IDS MODE  \033[0m"
-  echo -e "\033[34m (sniff-only, no enforce) \033[0m"
-  echo -e "\033[34m=========================\033[0m"
+  [[ -n "${IFACE:-}" ]] || choose_iface
+  printf "%b=========================%b\n" "$C_HEAD" "$C_RESET"
+  printf "%b SURICATA: IDS MODE %b\n" "$C_HEAD" "$C_RESET"
+  printf "%b (sniff-only) %b\n" "$C_HEAD" "$C_RESET"
+  printf "%b=========================%b\n" "$C_HEAD" "$C_RESET"
   suricata_stop; flush_nfq; nft_flush; test_suricata
   logit "MODE=IDS iface=$IFACE"
   exec suricata -c "$SURICATA_CFG" -i "$IFACE"
 }
 
 suricata_ips_all() {
-  [[ -n "$IFACE" ]] || choose_iface
-  echo -e "\033[31m============================\033[0m"
-  echo -e "\033[31m   SURICATA: IPS-ALL MODE   \033[0m"
-  echo -e "\033[31m (inline enforce via NFQUEUE)\033[0m"
-  echo -e "\033[31m============================\033[0m"
+  [[ -n "${IFACE:-}" ]] || choose_iface
+  printf "%b============================%b\n" "$C_ERR" "$C_RESET"
+  printf "%b SURICATA: IPS-ALL MODE %b\n" "$C_ERR" "$C_RESET"
+  printf "%b (inline enforce via NFQUEUE)%b\n" "$C_ERR" "$C_RESET"
+  printf "%b============================%b\n" "$C_ERR" "$C_RESET"
   suricata_stop; flush_nfq; nft_flush; test_suricata; ensure_fail_open_on
 
-  # Honor backend preference
   local used_backend=""
-  case "${BACKEND}" in
+  case "$BACKEND" in
     nft)
-      if have_nft; then
-        nft_install_queue_all
-        ok "Using nftables inet hooks (forced)."
-        used_backend="nft"
-      else
-        err "Requested nft backend but 'nft' not found. Abort."; return 1
-      fi
+      have_nft || { err "Requested nft backend but 'nft' not found."; return 1; }
+      nft_install_queue_all; ok "Using nftables inet hooks (forced)."; used_backend="nft"
       ;;
     xt)
-      insert_lo_accepts_v4; insert_lo_accepts_v6
-      queue_all_v4; queue_all_v6
-      ok "Using xtables hooks (forced)."
-      used_backend="xt"
+      insert_lo_accepts; queue_all_xt; ok "Using xtables hooks (forced)."; used_backend="xt"
       ;;
     auto|*)
       if have_nft; then
-        nft_install_queue_all
-        ok "Using nftables inet hooks (auto)."
-        used_backend="nft"
+        nft_install_queue_all; ok "Using nftables inet hooks (auto)."; used_backend="nft"
       else
-        insert_lo_accepts_v4; insert_lo_accepts_v6
-        queue_all_v4; queue_all_v6
-        ok "Using xtables hooks (auto fallback)."
-        used_backend="xt"
+        insert_lo_accepts; queue_all_xt; ok "Using xtables hooks (auto fallback)."; used_backend="xt"
       fi
       ;;
   esac
@@ -266,14 +248,14 @@ suricata_ips_all() {
   exec suricata -c "$SURICATA_CFG" -q "$QUEUE"
 }
 
-# -------- Rules: parsers (mawk-safe) --------
+# -------- Rules: YAML parsing (mawk-safe) --------
 _yaml_default_rule_path() {
   awk -F': *' '
     /^[ \t]*#/ {next}
-    /^[ \t]*default-rule-path:[ \t]*/ { gsub(/["'\''"]/, "", $2); print $2; exit }
+    /^[ \t]*default-rule-path:[ \t]*/ { gsub(/["'\'']/, "", $2); print $2; exit }
   ' "$SURICATA_CFG"
 }
-# emits: "enabled\tfile" or "disabled\tfile"
+
 _yaml_rulefiles() {
   awk '
     BEGIN { INBLK=0 }
@@ -284,14 +266,14 @@ _yaml_rulefiles() {
       if (line ~ /^[ \t]*#[ \t]*-[ \t]*/) {
         sub(/^[ \t]*#[ \t]*-[ \t]*/, "", line)
         sub(/[ \t]+#.*/, "", line)
-        gsub(/["'\''"]/, "", line)
+        gsub(/["'\'']/, "", line)
         if (line != "") print "disabled\t" line
         next
       }
       if (line ~ /^[ \t]*-[ \t]*/) {
         sub(/^[ \t]*-[ \t]*/, "", line)
         sub(/[ \t]+#.*/, "", line)
-        gsub(/["'\''"]/, "", line)
+        gsub(/["'\'']/, "", line)
         if (line != "") print "enabled\t" line
         next
       }
@@ -299,28 +281,33 @@ _yaml_rulefiles() {
   ' "$SURICATA_CFG"
 }
 
-_resolve_rule_path() { local base="$1" file="$2"; if [[ "$file" = /* ]]; then printf "%s\n" "$file"; else printf "%s/%s\n" "${base%/}" "$file"; fi; }
+_resolve_rule_path() {
+  local base="$1" file="$2"
+  if [[ "$file" = /* ]]; then printf "%s\n" "$file"; else printf "%s/%s\n" "${base%/}" "$file"; fi
+}
 
-# -------- Rules: enforce state (idempotent enable/disable) --------
-_backup_yaml() { local ts dst; ts="$(date +%Y%m%d-%H%M%S)"; dst="${SURICATA_CFG}.${ts}.bak"; cp -a -- "$SURICATA_CFG" "$dst"; ok "Backup: $dst"; }
+# -------- Rules: enable/disable (idempotent) --------
+_backup_yaml() {
+  local ts dst
+  ts="$(date +%Y%m%d-%H%M%S)"
+  dst="${SURICATA_CFG}.${ts}.bak"
+  cp -a -- "$SURICATA_CFG" "$dst"
+  ok "Backup: $dst"
+}
 
 _set_rulefile_state() {
   local target="$1" desired="$2"
-  [[ -n "$target" && -n "$desired" ]] || { err "Missing args to _set_rulefile_state"; return 1; }
+  [[ -n "$target" && -n "$desired" ]] || { err "Missing args"; return 1; }
+
   local tmp; tmp="$(mktemp)"
   awk -v target="$target" -v desired="$desired" '
     BEGIN { INBLK=0; changed=0 }
     /^[ \t]*rule-files:[ \t]*$/ && $0 !~ /^[ \t]*#/ { INBLK=1; print; next }
     INBLK && /^[^ \t#][^:]*:/ { INBLK=0 }
     INBLK {
-      raw=$0
-      indent = match(raw,/[^ \t]/) - 1; if (indent < 0) indent=0
-      spaces = substr("                                                                ",1,indent)
-      line=raw
-      gsub(/["'\''"]/, "", line)
-      l=line
-      sub(/^[ \t]*#?[ \t]*/ , "", l); sub(/^[ \t]*-[ \t]*/ , "", l)
-      sub(/[ \t]+#.*/, "", l)
+      raw=$0; indent = match(raw,/[^ \t]/) - 1; if (indent < 0) indent=0; spaces = substr("                ",1,indent)
+      line=raw; gsub(/["'\'']/, "", line); l=line
+      sub(/^[ \t]*#?[ \t]*/, "", l); sub(/^[ \t]*-[ \t]*/, "", l); sub(/[ \t]+#.*/, "", l)
       if (l == target) {
         if (desired == "enabled") {
           sub(/^[ \t]*#[ \t]*/, "", raw)
@@ -328,7 +315,7 @@ _set_rulefile_state() {
           print raw
         } else {
           if (raw !~ /^[ \t]*#/) raw = spaces "# - " target
-          else { sub(/^[ \t]*#[ \t]*/ , spaces "# - "); raw = raw }
+          else sub(/^[ \t]*#[ \t]*/, spaces "# - ")
           print raw
         }
         changed=1; next
@@ -337,88 +324,87 @@ _set_rulefile_state() {
     { print }
     END { if (!changed) exit 2 }
   ' "$SURICATA_CFG" > "$tmp" && mv "$tmp" "$SURICATA_CFG" || { rm -f "$tmp"; return 1; }
-  return 0
 }
 
-# -------- Rules: insight --------
 _rules_insight() {
   test_suricata 2>/dev/null || true
-  local base path state file size lines
-  base="$(_yaml_default_rule_path)"; [[ -n "$base" ]] || base="/var/lib/suricata/rules"
-  say "----- rule-files (${SURICATA_CFG}; default-path: $base) -----"
+  local base; base="$(_yaml_default_rule_path)"; [[ -n "$base" ]] || base="/var/lib/suricata/rules"
+
+  msg "----- rule-files ($SURICATA_CFG; default-path: $base) -----"
 
   local enabled=() disabled=() all=()
+  local state file path size lines
+
   while IFS=$'\t' read -r state file; do
     [[ -z "${file:-}" ]] && continue
     all+=("$state|$file")
-    [[ "$state" == "enabled" ]] && enabled+=("$file") || disabled+=("$file")
+    if [[ "$state" == enabled ]]; then enabled+=("$file"); else disabled+=("$file"); fi
   done < <(_yaml_rulefiles | sort -u)
 
   if ((${#all[@]}==0)); then warn "No rule-files found in YAML."; return; fi
 
-  say; say "Enabled:"
-  local f
-  for f in "${enabled[@]}"; do
-    path="$(_resolve_rule_path "$base" "$f")"
+  msg ""
+  msg "Enabled:"
+  for file in "${enabled[@]}"; do
+    path="$(_resolve_rule_path "$base" "$file")"
     if [[ -f "$path" ]]; then
-      size="$(du -h "$path" | awk '{print $1}')"; lines="$(wc -l <"$path" 2>/dev/null || echo 0)"
-      printf "  - %-24s -> %s  (exists, %s, %s lines)\n" "$f" "$path" "$size" "$lines"
+      size="$(du -h "$path" | awk '{print $1}')"
+      lines="$(wc -l <"$path" 2>/dev/null || echo 0)"
+      printf " - %-24s -> %s (exists, %s, %s lines)\n" "$file" "$path" "$size" "$lines"
     else
-      printf "  - %-24s -> %s  (missing)\n" "$f" "$path"
+      printf " - %-24s -> %s (missing)\n" "$file" "$path"
     fi
   done
 
-  say; say "Disabled:"
+  msg ""
+  msg "Disabled:"
   if ((${#disabled[@]}==0)); then
-    say "  (none)"
+    msg " (none)"
   else
-    for f in "${disabled[@]}"; do
-      path="$(_resolve_rule_path "$base" "$f")"
+    for file in "${disabled[@]}"; do
+      path="$(_resolve_rule_path "$base" "$file")"
       if [[ -f "$path" ]]; then
-        size="$(du -h "$path" | awk '{print $1}')"; lines="$(wc -l <"$path" 2>/dev/null || echo 0)"
-        printf "  - %-24s -> %s  (exists, %s, %s lines)\n" "$f" "$path" "$size" "$lines"
+        size="$(du -h "$path" | awk '{print $1}')"
+        lines="$(wc -l <"$path" 2>/dev/null || echo 0)"
+        printf " - %-24s -> %s (exists, %s, %s lines)\n" "$file" "$path" "$size" "$lines"
       else
-        printf "  - %-24s -> %s  (missing)\n" "$f" "$path"
+        printf " - %-24s -> %s (missing)\n" "$file" "$path"
       fi
     done
   fi
-  say; say "Summary: ${#enabled[@]} enabled, ${#disabled[@]} disabled, total ${#all[@]}."
+
+  msg ""
+  msg "Summary: ${#enabled[@]} enabled, ${#disabled[@]} disabled, total ${#all[@]}."
 }
 
-# -------- Checklist UI (dialog / whiptail / fallback) --------
 _has_dialog()   { command -v dialog >/dev/null 2>&1; }
 _has_whiptail() { command -v whiptail >/dev/null 2>&1; }
 
 _rulefiles_collect() {
-  mapfile -t ITEMS < <(
-    _yaml_rulefiles | awk -F'\t' '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//' | awk 'length>0' | sort -u
-  )
-  mapfile -t STATES < <(
-    _yaml_rulefiles | awk -F'\t' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); if (length($2)>0) print $1 "\t" $2}' | sort -u
-  )
+  mapfile -t ITEMS  < <( _yaml_rulefiles | awk -F'\t' '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//' | awk 'length>0' | sort -u )
+  mapfile -t STATES < <( _yaml_rulefiles | awk -F'\t' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); if (length($2)>0) print $1 "\t" $2}' | sort -u )
 }
 
 _checklist_enable_disable() {
   _rulefiles_collect
-  if ((${#ITEMS[@]}==0)); then err "No rule-files in YAML."; return 1; fi
+  ((${#ITEMS[@]})) || { err "No rule-files in YAML."; return 1; }
 
   declare -A cur
-  local s f state
+  local s state f
   for s in "${STATES[@]}"; do
-    state="${s%%$'\t'*}"
-    f="${s#*$'\t'}"
+    state="${s%%$'\t'*}"; f="${s#*$'\t'}"
     [[ -z "$f" ]] && continue
     cur["$f"]="$state"
   done
 
   CHOSEN=()
+
   if _has_dialog; then
     local args=() out st desc
     for f in "${ITEMS[@]}"; do
       [[ -z "$f" ]] && continue
-      st="${cur[$f]:-disabled}"
-      desc="Rule-file: $f"
-      if [[ "$st" == "enabled" ]]; then args+=("$f" "$desc" "on"); else args+=("$f" "$desc" "off"); fi
+      st="${cur[$f]:-disabled}"; desc="Rule-file: $f"
+      if [[ "$st" == enabled ]]; then args+=("$f" "$desc" "on"); else args+=("$f" "$desc" "off"); fi
     done
     if out=$(dialog --stdout --no-tags --checklist "Select rule-files to ENABLE (unchecked will be DISABLED)" 20 80 14 "${args[@]}"); then
       read -r -a CHOSEN <<<"$out"
@@ -429,9 +415,8 @@ _checklist_enable_disable() {
     local args=() out st desc
     for f in "${ITEMS[@]}"; do
       [[ -z "$f" ]] && continue
-      st="${cur[$f]:-disabled}"
-      desc="Rule-file: $f"
-      if [[ "$st" == "enabled" ]]; then args+=("$f" "$desc" "ON"); else args+=("$f" "$desc" "OFF"); fi
+      st="${cur[$f]:-disabled}"; desc="Rule-file: $f"
+      if [[ "$st" == enabled ]]; then args+=("$f" "$desc" "ON"); else args+=("$f" "$desc" "OFF"); fi
     done
     if out=$(whiptail --title "Suricata rule-files" --separate-output --checklist "Select rule-files to ENABLE (unchecked will be DISABLED)" 20 80 14 "${args[@]}" 3>&1 1>&2 2>&3); then
       mapfile -t CHOSEN <<<"$out"
@@ -439,18 +424,15 @@ _checklist_enable_disable() {
       return 1
     fi
   else
-    say "Available rule-files (current enabled marked [x]):"
-    local i=1 st
+    msg "Available rule-files (current enabled marked [x]):"
+    local i=1
     for f in "${ITEMS[@]}"; do
-      [[ -z "$f" ]] && continue
-      st="${cur[$f]:-disabled}"
-      printf "  %2d) [%s] %s\n" "$i" "$([[ $st == enabled ]] && echo x || echo ' ')" "$f"
+      printf " %2d) [%s] %s\n" "$i" "$([[ ${cur[$f]:-disabled} == enabled ]] && echo x || echo ' ')" "$f"
       ((i++))
     done
-    read -rp "Enter indexes to ENABLE (others will be DISABLED), e.g. '1 3' or '1,3': " line || true
+    read -rp "Enter indexes to ENABLE (others DISABLED), e.g. '1 3' or '1,3': " line || true
     [[ -z "${line:-}" ]] && return 1
-    line="${line//,/ }"
-    local picks=( $line ) idx
+    line="${line//,/ }"; local picks=( $line ) idx
     for idx in "${picks[@]}"; do
       [[ "$idx" =~ ^[0-9]+$ ]] || continue
       (( idx>=1 && idx<=${#ITEMS[@]} )) || continue
@@ -459,9 +441,8 @@ _checklist_enable_disable() {
     done
   fi
 
-  declare -A WANT
-  for f in "${ITEMS[@]}"; do [[ -z "$f" ]] && continue; WANT["$f"]="disabled"; done
-  for f in "${CHOSEN[@]:-}"; do [[ -z "$f" ]] && continue; WANT["$f"]="enabled"; done
+  declare -A WANT; for f in "${ITEMS[@]}"; do [[ -z "$f" ]] && continue; WANT["$f"]=disabled; done
+  for f in "${CHOSEN[@]:-}"; do [[ -z "$f" ]] && continue; WANT["$f"]=enabled; done
 
   _backup_yaml
   local changed=0
@@ -476,32 +457,31 @@ _checklist_enable_disable() {
     fi
   done
   (( changed )) && ok "Applied rule-file changes." || ok "No changes needed."
-  return 0
 }
 
-# -------- Rules: open files (multi) --------
 _open_rulefiles_vim() {
-  mapfile -t ITEMS < <(
-    _yaml_rulefiles | awk -F'\t' '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//' | awk 'length>0' | sort -u
-  )
-  if ((${#ITEMS[@]}==0)); then err "No rule-files in YAML."; return 1; fi
+  mapfile -t ITEMS < <( _yaml_rulefiles | awk -F'\t' '{print $2}' | sed 's/^[ \t]*//; s/[ \t]*$//' | awk 'length>0' | sort -u )
+  ((${#ITEMS[@]})) || { err "No rule-files in YAML."; return 1; }
   local base; base="$(_yaml_default_rule_path)"; [[ -n "$base" ]] || base="/var/lib/suricata/rules"
 
-  say "Available rule-files:"
-  local i=1 f; for f in "${ITEMS[@]}"; do printf "  %2d) %s\n" "$i" "$f"; ((i++)); done
+  msg "Available rule-files:"
+  local i=1 f
+  for f in "${ITEMS[@]}"; do printf " %2d) %s\n" "$i" "$f"; ((i++)); done
+
   read -rp "Pick index(es) to OPEN in ${EDITOR_BIN} (e.g., '1 3' or '1,3'): " line || true
   [[ -z "${line:-}" ]] && return 0
   line="${line//,/ }"
-  local picks=( $line ) idx path
-  local paths=()
+
+  local picks=( $line ) idx path paths=()
   for idx in "${picks[@]}"; do
     [[ "$idx" =~ ^[0-9]+$ ]] || continue
     (( idx>=1 && idx<=${#ITEMS[@]} )) || continue
     f="${ITEMS[$((idx-1))]}"; [[ -z "$f" ]] && continue
     path="$(_resolve_rule_path "$base" "$f")"
     if [[ ! -f "$path" ]]; then
-      warn "Missing: $path — create?"; read -rp "[y/N]: " yn || true
-      if [[ "${yn,,}" == "y" ]]; then mkdir -p -- "$(dirname "$path")"; : > "$path"; fi
+      warn "Missing: $path — create?"
+      read -rp "[y/N]: " yn || true
+      if [[ "${yn,,}" == y ]]; then mkdir -p -- "$(dirname "$path")"; : > "$path"; fi
     fi
     paths+=("$path")
   done
@@ -511,22 +491,24 @@ _open_rulefiles_vim() {
 # -------- Status / Diagnostics --------
 status_show() {
   echo "===== SURICATA STATUS ====="
-  systemctl is-active --quiet suricata && ok "systemd suricata: active" || warn "systemd suricata: inactive"
+  if systemctl is-active --quiet suricata 2>/dev/null; then ok "systemd suricata: active"; else warn "systemd suricata: inactive"; fi
   pgrep -ax suricata || warn "No suricata process found"
-  echo
-  echo "===== NFQUEUE (IPv4) ====="; iptables -S | grep -n NFQUEUE || echo "(none)"
-  if [[ $HAVE_IP6 -eq 1 ]]; then echo; echo "===== NFQUEUE (IPv6) ====="; ip6tables -S | grep -n NFQUEUE || echo "(none)"; fi
-  echo
-  nft_status
-  echo
-  echo "===== ENV ====="
-  echo "IFACE=$IFACE  QUEUE=$QUEUE  CFG=$SURICATA_CFG"
-  echo "iptables backend: $IPT_V"; [[ $NFT_BACKEND -eq 1 ]] && warn "iptables-nft backend detected."
-  if backend_valid; then
-    echo "backend preference: $(describe_backend)"
-  else
-    echo "backend preference: (invalid: ${BACKEND})"
+
+  echo; echo "===== NFQUEUE (IPv4) ====="
+  iptables -S | grep -n NFQUEUE || echo "(none)"
+
+  if [[ $HAVE_IP6 -eq 1 ]]; then
+    echo; echo "===== NFQUEUE (IPv6) ====="
+    ip6tables -S | grep -n NFQUEUE || echo "(none)"
   fi
+
+  echo; nft_status
+
+  echo; echo "===== ENV ====="
+  echo "IFACE=$IFACE QUEUE=$QUEUE CFG=$SURICATA_CFG"
+  echo "iptables backend: $IPT_V"
+  if [[ "$IPT_V" == *nf_tables* ]]; then warn "iptables-nft backend detected."; fi
+  if backend_valid; then echo "backend preference: $(describe_backend)"; else echo "backend preference: (invalid: ${BACKEND})"; fi
   if sysctl -a 2>/dev/null | grep -q '^net.netfilter.nf_queue_bypass'; then
     echo "fail-open: $(sysctl -n net.netfilter.nf_queue_bypass 2>/dev/null)"
   else
@@ -534,27 +516,29 @@ status_show() {
   fi
 }
 
-show_counters() { iptables -vnL; [[ $HAVE_IP6 -eq 1 ]] && { echo; ip6tables -vnL; } || true; }
+show_counters() {
+  iptables -vnL
+  if [[ $HAVE_IP6 -eq 1 ]]; then echo; ip6tables -vnL; fi
+}
 
-# -------- Live monitor (external suricatamon) --------
+# -------- Live monitor --------
 live_monitor() {
   local log="${SURICATA_EVE:-/var/log/suricata/eve.json}"
-
   if [[ -x "$SURICATAMON_BIN" ]]; then
     ok "Launching suricatamon (Ctrl-C to exit)…"
     SURICATAMON_SHOW_SID="${SURICATAMON_SHOW_SID:-1}" \
     SURICATAMON_WIDE="${SURICATAMON_WIDE:-1}" \
-      "$SURICATAMON_BIN" || warn "suricatamon exited with a non-zero status."
+    "$SURICATAMON_BIN" || warn "suricatamon exited with a non-zero status."
   else
     warn "suricatamon not found at: $SURICATAMON_BIN"
     warn "Install it and/or set SURICATAMON_BIN to its path."
     [[ -r "$log" ]] || { err "Cannot read $log"; return 1; }
-    say "[*] Fallback: tailing $log (first 200 lines)…"
+    msg "[*] Fallback: tailing $log (first 200 lines)…"
     tail -n 200 "$log"
   fi
 }
 
-# -------- Boot integration (IPS-ALL service) --------
+# -------- Boot integration (systemd) --------
 install_boot_ips_all() {
   local unit=/etc/systemd/system/suricata-inline.service
   cat > "$unit" <<EOF
@@ -575,33 +559,64 @@ WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
   systemctl enable --now suricata-inline.service
-  ok "Boot service installed: suricata-inline.service (IPS-ALL)"; logit "boot service installed (IPS-ALL)"
+  ok "Boot service installed: suricata-inline.service (IPS-ALL)"
+  logit "boot service installed (IPS-ALL)"
 }
 
 remove_boot_ips_all() {
   systemctl disable --now suricata-inline.service 2>/dev/null || true
   rm -f /etc/systemd/system/suricata-inline.service
   systemctl daemon-reload
-  ok "Boot service removed"; logit "boot service removed"
+  ok "Boot service removed"
+  logit "boot service removed"
 }
 
-# -------- Backup/Restore rules --------
+# -------- iptables rules backup/restore --------
 backup_rules() {
   mkdir -p /root/iptables-bak
-  iptables-save  > /root/iptables-bak/iptables.v4
-  [[ $HAVE_IP6 -eq 1 ]] && ip6tables-save > /root/iptables-bak/iptables.v6 || true
-  ok "Saved to /root/iptables-bak/"; logit "iptables rules backed up"
+  iptables-save > /root/iptables-bak/iptables.v4
+  if [[ $HAVE_IP6 -eq 1 ]]; then ip6tables-save > /root/iptables-bak/iptables.v6; fi
+  ok "Saved to /root/iptables-bak/"
+  logit "iptables rules backed up"
 }
+
 restore_rules() {
-  [[ -f /root/iptables-bak/iptables.v4 ]] && iptables-restore  < /root/iptables-bak/iptables.v4
-  [[ -f /root/iptables-bak/iptables.v6 && $HAVE_IP6 -eq 1 ]] && ip6tables-restore < /root/iptables-bak/iptables.v6 || true
-  ok "Restored from /root/iptables-bak/"; logit "iptables rules restored"
+  [[ -f /root/iptables-bak/iptables.v4 ]] && iptables-restore < /root/iptables-bak/iptables.v4
+  if [[ -f /root/iptables-bak/iptables.v6 && $HAVE_IP6 -eq 1 ]]; then ip6tables-restore < /root/iptables-bak/iptables.v6; fi
+  ok "Restored from /root/iptables-bak/"
+  logit "iptables rules restored"
+}
+
+# -------- Interactive pickers --------
+choose_iface() {
+  msg "Detected default IFACE: ${IFACE_DEFAULT:-<none>}"
+  read -rp "Interface to use [${IFACE:-${IFACE_DEFAULT:-eth0}}]: " ans || true
+  IFACE="${ans:-${IFACE:-${IFACE_DEFAULT:-eth0}}}"
+  ok "IFACE set to $IFACE"
+  logit "IFACE=$IFACE"
+}
+
+choose_queue() {
+  read -rp "NFQUEUE number [${QUEUE}]: " ans || true
+  if [[ -n "${ans:-}" && "$ans" =~ ^[0-9]+$ ]]; then QUEUE="$ans"; fi
+  ok "QUEUE set to $QUEUE"
+  logit "QUEUE=$QUEUE"
+}
+
+choose_backend() {
+  msg "Current backend: $(describe_backend)"
+  read -rp "Choose backend [auto/xt/nft] (default: ${BACKEND}): " ans || true
+  ans="${ans:-$BACKEND}"
+  case "${ans,,}" in
+    auto|xt|nft) BACKEND="${ans,,}"; ok "Backend set to: $(describe_backend)"; logit "backend=$BACKEND" ;;
+    *) warn "Invalid choice. Keeping: $(describe_backend)" ;;
+  esac
 }
 
 # -------- Menus --------
 main_menu() {
   echo
-  banner_meercata
+  banner
   echo "============= Meercata ============="
   echo "1) IDS (sniff-only)"
   echo "2) IPS-ALL (inline enforce)"
@@ -613,18 +628,19 @@ main_menu() {
   echo "8) Quit"
   echo "===================================="
 }
+
 advanced_menu() {
   echo
   echo "----------- Advanced ------------"
-  echo "1) Choose interface (current: ${IFACE:-unset})"
-  echo "2) Choose NFQUEUE number (current: ${QUEUE})"
-  echo "3) Enable fail-open (nf_queue_bypass=1)"
-  echo "4) Disable fail-open (nf_queue_bypass=0)"
-  echo "5) Install boot auto-start (IPS-ALL)"
-  echo "6) Remove boot auto-start"
-  echo "7) Backup iptables/ip6tables rules"
-  echo "8) Restore iptables/ip6tables rules"
-  echo "9) Insert allowlist rule (before NFQUEUE)"
+  echo "1)  Choose interface (current: ${IFACE:-unset})"
+  echo "2)  Choose NFQUEUE number (current: ${QUEUE})"
+  echo "3)  Enable fail-open (nf_queue_bypass=1)"
+  echo "4)  Disable fail-open (nf_queue_bypass=0)"
+  echo "5)  Install boot auto-start (IPS-ALL)"
+  echo "6)  Remove boot auto-start"
+  echo "7)  Backup iptables/ip6tables rules"
+  echo "8)  Restore iptables/ip6tables rules"
+  echo "9)  Insert allowlist rule (before NFQUEUE)"
   echo "10) Install nftables hooks (inet, TCP/UDP/ICMP/ICMPv6)"
   echo "11) Install nftables hooks (minimal: 7070 + ICMP/ICMPv6)"
   echo "12) Remove nftables hooks"
@@ -635,13 +651,36 @@ advanced_menu() {
   echo "---------------------------------"
 }
 
-# -------- Main --------
+usage() {
+  cat <<EOF
+meercata — Suricata IDS/IPS switcher
+Usage: $0 [--ids | --ips | --flush | --status | --advanced | --help]
+Env:  SURICATA_CFG  EDITOR  SURICATAMON_BIN  LOGFILE  BACKEND  QUEUE  IFACE
+EOF
+}
+
+# -------- Entrypoint --------
+trap 'err "Unexpected error on line $LINENO"; exit 1' ERR
 need_root
+require suricata
+require iptables
+
 clear
-banner_meercata
-say "Using config: ${SURICATA_CFG}"
+banner
+msg "Using config: ${SURICATA_CFG}"
 _base_tmp="$(_yaml_default_rule_path)"; [[ -z "$_base_tmp" ]] && _base_tmp="/var/lib/suricata/rules"
-say "Default rule path: ${_base_tmp}"; unset _base_tmp
+msg "Default rule path: ${_base_tmp}"
+unset _base_tmp
+
+case "${1:-interactive}" in
+  --ids)     suricata_ids ;;
+  --ips)     suricata_ips_all ;;
+  --flush)   flush_nfq; nft_flush ;;
+  --status)  status_show ;;
+  --advanced) ;;
+  --help|-h) usage; exit 0 ;;
+  interactive|*) ;;
+esac
 
 while true; do
   main_menu
@@ -656,15 +695,15 @@ while true; do
         advanced_menu
         read -rp "Advanced [1-16]: " a
         case "$a" in
-          1) choose_iface ;;
-          2) choose_queue ;;
-          3) ensure_fail_open_on ;;
-          4) ensure_fail_open_off ;;
-          5) install_boot_ips_all ;;
-          6) remove_boot_ips_all ;;
-          7) backup_rules ;;
-          8) restore_rules ;;
-          9) allowlist_insert ;;
+          1)  choose_iface ;;
+          2)  choose_queue ;;
+          3)  ensure_fail_open_on ;;
+          4)  ensure_fail_open_off ;;
+          5)  install_boot_ips_all ;;
+          6)  remove_boot_ips_all ;;
+          7)  backup_rules ;;
+          8)  restore_rules ;;
+          9)  allowlist_insert ;;
           10) nft_install_queue_all ;;
           11) nft_install_queue_minimal ;;
           12) nft_flush ;;
@@ -672,18 +711,18 @@ while true; do
           14) live_monitor ;;
           15) break ;;
           16) choose_backend ;;
-          *) err "Invalid option" ;;
+          *)  err "Invalid option" ;;
         esac
       done
       ;;
-    6) _rules_insight; say; read -rp "Press Enter to continue…" _ || true ;;
-    7) 
+    6) _rules_insight; echo; read -rp "Press Enter to continue…" _ || true ;;
+    7)
       while true; do
-        say; say "----- Edit rule-files -----"
-        say "1) Enable/Disable via CHECKLIST"
-        say "2) Open rule-file(s) in editor ($EDITOR_BIN)"
-        say "3) Reload Suricata"
-        say "4) Back"
+        echo; echo "----- Edit rule-files -----"
+        echo "1) Enable/Disable via CHECKLIST"
+        echo "2) Open rule-file(s) in editor ($EDITOR_BIN)"
+        echo "3) Reload Suricata"
+        echo "4) Back"
         read -rp "Select [1-4]: " opt2 || true
         case "$opt2" in
           1) _checklist_enable_disable ;;
