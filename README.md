@@ -331,3 +331,6 @@ PRs welcome! Please keep changes POSIX‑ish and avoid external deps where possi
 ## License
 
 Choose a license you prefer (e.g., MIT, Apache‑2.0). Include a `LICENSE` file in the repo.
+
+## Author
+Krecz
