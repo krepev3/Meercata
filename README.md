@@ -38,7 +38,7 @@
 * Auto‑detect network interface & NFQUEUE number
 * **Backend auto‑selection**: prefers nftables if present, falls back to iptables
 * Fail‑open kernel toggle (`net.netfilter.nf_queue_bypass`)
-* Boot persistence: generates a systemd unit that installs hooks **before** starting Suricata
+* Cautios : Boot persistence: generates a systemd unit that installs hooks **before** starting Suricata
 * Backup/restore of iptables/ip6tables rules
 * Allowlist insertion (before NFQUEUE)
 * Rule‑files insight (enabled/disabled, existence, size, line count)
