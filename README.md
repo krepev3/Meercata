@@ -1,4 +1,4 @@
-# Meercata (suricata-mode) v1.7
+# Meercata + Suricatamon v1.7
 
 **Meercata** = **Meerkat + Suricata** — a friendly, menu‑driven Bash controller for [Suricata](https://suricata.io/) in **IDS/IPS NFQUEUE mode** with a built‑in rules manager and live monitoring. It wraps common Suricata operations into an interactive TUI for analysts and sysadmins.
 
