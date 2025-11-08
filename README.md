@@ -38,7 +38,7 @@
 * Auto‑detect network interface & NFQUEUE number
 * **Backend auto‑selection**: prefers nftables if present, falls back to iptables
 * Fail‑open kernel toggle (`net.netfilter.nf_queue_bypass`)
-* Cautious : Boot persistence: generates a systemd unit that installs hooks **before** starting Suricata
+* Boot persistence: generates a systemd unit that installs hooks **before** starting Suricata
 * Backup/restore of iptables/ip6tables rules
 * Allowlist insertion (before NFQUEUE)
 * Rule‑files insight (enabled/disabled, existence, size, line count)
@@ -144,7 +144,7 @@ The unit name is `suricata-inline.service`. A small env file is placed at `/etc/
 
 ---
 
-## Boot auto‑start (IPS‑ALL + Pre‑hooks) — IMPORTANT (This may cause your box locked up)
+## Boot auto‑start (IPS‑ALL + Pre‑hooks) — IMPORTANT
 
 **Short version:** installing the boot auto‑start will apply NFQUEUE hooks *before* Suricata starts. This requires proper kernel features and careful testing — otherwise you risk disrupting networking on boot (possible loss of network connectivity until hooks are removed).
 
@@ -181,17 +181,55 @@ rule-files:
   - meercata.rules
 ```
 
-Meercata provides:
+### Suggested workflow
 
-* **Rules Insight**: lists enabled/disabled files, path, size, line count.
-* **Checklist enable/disable**: toggles entries in `suricata.yaml` (creates a timestamped backup first).
-* **Open in editor**: select files to open or auto‑create missing paths.
+1. **Create your custom rules** in the default rule path (for example `/var/lib/suricata/rules/meercata-test.rules`).
+2. **Validate** the syntax and performance of your new rules using:
 
-> Tip: Put your custom files (e.g., `meercata-nmap.rules`, `meercata-bruteforce.rules`) in the default rule path and enable them via the checklist.
+   ```bash
+   sudo suricata -T -c /etc/suricata/suricata.yaml
+   ```
+
+   Ensure there are no parsing errors before adding them to production.
+3. Once tested and satisfied, **manually add** your `.rules` file name to the `rule-files` section of `suricata.yaml`.
+   This ensures Meercata can parse and manage the entry for enable/disable operations (comment/uncomment) automatically.
+
+After being listed in `rule-files`, Meercata’s built‑in tools can:
+
+* Show **Rules Insight** (enabled/disabled, existence, size, line count)
+* Provide **Checklist enable/disable** to toggle entries
+* Open files directly for editing or creation
+
+> ⚠️ Meercata only manages rule‑file entries already declared in `suricata.yaml`. It will not auto‑insert unlisted files.
 
 ## Live monitoring (suricatamon)
 
-If `/usr/local/bin/suricatamon` is present, Advanced → **14** launches it with wide, SID‑aware output. Otherwise Meercata falls back to tailing `eve.json`.
+`suricatamon` is a **separate script** that provides real-time, colorized event output from Suricata’s `eve.json` logs.
+
+### Installation
+
+Copy it to a directory in your `$PATH` so you can launch it from anywhere:
+
+```bash
+sudo cp suricatamon /usr/local/bin/suricatamon
+sudo chmod +x /usr/local/bin/suricatamon
+```
+
+Similarly, ensure Meercata is also accessible globally:
+
+```bash
+sudo cp meercata /usr/local/bin/meercata
+sudo chmod +x /usr/local/bin/meercata
+```
+
+Once both are installed as system variables, you can run them anywhere:
+
+```bash
+sudo meercata
+sudo suricatamon
+```
+
+If `suricatamon` exists in `/usr/local/bin/`, Meercata will automatically call it during **Advanced → 14 (Live Monitor)**. If not found, Meercata falls back to tailing the `eve.json` log.
 
 ## YAML summary helper
 
