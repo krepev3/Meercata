@@ -1,145 +1,233 @@
 # 🦦 Meercata (suricata-mode) v1.6
 
-**Meercata** = **Meerkat + Suricata**  
-A friendly interactive Bash controller for [Suricata](https://suricata.io/) in **IDS/IPS NFQUEUE mode** with a built-in rules manager and live monitoring.
+**Meercata** = **Meerkat + Suricata** — a friendly, menu‑driven Bash controller for [Suricata](https://suricata.io/) in **IDS/IPS NFQUEUE mode** with a built‑in rules manager and live monitoring. It wraps common Suricata operations into an interactive TUI for analysts and sysadmins.
 
-It wraps common Suricata operations into a **menu-driven TUI** for easier use by analysts and sysadmins.
-
----
-
-## ⚠️ Important
-
-**Meercata only works when Suricata is deployed inline via `NFQUEUE`.**  
-This means your traffic must be hooked into NFQUEUE using either:
-
-- **iptables** rules (classic backend or nftables backend), or  
-- **ufw** (which under the hood uses iptables)  
-
-If you only run Suricata in **AF-PACKET**, **PCAP**, or **IDS sniff-only mode**, Meercata’s IPS enforcement will not function.  
+> **Heads‑up**
+> Meercata’s IPS enforcement only works when traffic is sent to **NFQUEUE** (iptables/ufw or nftables). If you run Suricata in **AF‑PACKET/PCAP sniff‑only**, Meercata can start IDS, but it will not block traffic.
 
 ---
 
-## ✨ Features
-
-- IDS (sniff-only) and IPS (inline enforce with NFQUEUE)
-- Auto-detect network interface & NFQUEUE number
-- Fail-open kernel toggle
-- Boot persistence (systemd unit for IPS mode)
-- Backup/restore of iptables rules
-- Allowlist insertion
-- Rule-files insight (enabled/disabled, size, line count, existence check)
-- Checklist-based enable/disable of rule-files directly in `suricata.yaml`
-- Multi-open in editor (default `vim`, override with `$EDITOR`)
-- Live monitoring (`suricatamon`) with colorized, human-readable Suricata events
-- Logs and actions are recorded in `/var/log/suricata-mode.log`
-
-## Interactive Mode (Engine)
-  <img width="907" height="403" alt="image" src="https://github.com/user-attachments/assets/cdc823dc-879a-4d2a-bcda-a402baa5b27c" />
-
-## Live Monitor (jq beautified and readable)
-<img width="907" height="565" alt="image" src="https://github.com/user-attachments/assets/2d0c4432-0e17-4463-a9be-20be5df70931" />
+## Table of contents
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Operating modes](#operating-modes)
+- [Backends: nftables vs xtables](#backends-nftables-vs-xtables)
+- [Systemd auto‑start (inline IPS)](#systemd-auto-start-inline-ips)
+- [Rules management](#rules-management)
+- [Live monitoring (suricatamon)](#live-monitoring-suricatamon)
+- [YAML summary helper](#yaml-summary-helper)
+- [Environment variables](#environment-variables)
+- [CLI switches](#cli-switches)
+- [Logs](#logs)
+- [Troubleshooting](#troubleshooting)
+- [Security notes](#security-notes)
+- [Sample rules (optional)](#sample-rules-optional)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 📦 Installation
+## Features
+- IDS (sniff‑only) and IPS (inline enforce via **NFQUEUE**)
+- Auto‑detect network interface & NFQUEUE number
+- **Backend auto‑selection**: prefers nftables if present, falls back to iptables
+- Fail‑open kernel toggle (`net.netfilter.nf_queue_bypass`)
+- Boot persistence: generates a systemd unit that installs hooks **before** starting Suricata
+- Backup/restore of iptables/ip6tables rules
+- Allowlist insertion (before NFQUEUE)
+- Rule‑files insight (enabled/disabled, existence, size, line count)
+- Checklist to enable/disable rule‑files directly in `suricata.yaml`
+- Multi‑open rule‑files in your editor (`$EDITOR`, default `vim`)
+- Live monitoring via `suricatamon` (colorized, human‑readable events)
+- Single log: `/var/log/suricata-mode.log`
 
-### 1. Dependencies
+## How it works
+Meercata expects Suricata to run **inline** with `-q <QUEUE>` so packets flow through NFQUEUE. Meercata will:
+1. **Set up hooks** (nftables or iptables) to send traffic to the queue.
+2. **Start Suricata** with `-q $QUEUE` (IPS) or `-i $IFACE` (IDS).
+3. Provide menus for status, YAML tools, rule management, and monitoring.
 
-Ensure the following are installed:
+## Requirements
+Install the following packages (Debian/Kali/Ubuntu style):
 
 ```bash
-# Core tools 1 : UFW/IPTABLE
-apt install -y suricata iptables jq vim
+sudo apt update
+sudo apt install -y suricata iptables jq vim dialog whiptail nftables
+```
 
-and
+> `dialog`/`whiptail` are optional for a nicer checklist UI. `nftables` is recommended; Meercata auto‑falls back to iptables if nft is missing.
 
-# Core tools 2 : suricata
-apt install -y suricata
+## Installation
+Copy the scripts to a directory on your `PATH` and make them executable:
 
-# Optional, for better checklist UI
-apt install -y dialog whiptail
-
-Also recommended:
-
-Systemd (for auto-start integration)
-
-ufw if you prefer using UFW as your firewall manager
-
-2. Install Meercata
-sudo cp suricata-mode.sh /usr/local/bin/meercata
+```bash
+# Meercata engine
+sudo cp meercata /usr/local/bin/meercata
 sudo chmod +x /usr/local/bin/meercata
 
-RUn:
-sudo meercata "or" suricata-mode
-
-3. Install Suricatamon (live monitor)
+# (Optional) Suricatamon live monitor
 sudo cp suricatamon /usr/local/bin/suricatamon
 sudo chmod +x /usr/local/bin/suricatamon
-(Suricatamon is automatically used in Advanced → 11 if available.
-Otherwise, Meercata falls back to tail -f.)
+```
 
-Menu:
-|  \/  |  ___   ___  _ __  ___  __ _ | |_  __ _ 
-| |\/| | / _ \ / _ \| '__|/ __|/ _` || __|/ _` |
-| |  | ||  __/|  __/| |  | (__| (_| || |_| (_| |
-|_|  |_| \___| \___||_|   \___|\__,_| \__|\__,_|
+Verify:
+```bash
+meercata --help
+```
 
-============= Meercata =============
-1) IDS (sniff-only)
-2) IPS-ALL (inline enforce)
-3) Flush NFQUEUE rules
-4) Status
-5) Advanced…
-6) Rules Insight (rule-files)
-7) Edit rule-files (YAML; checklist/open)
-8) Quit
-====================================
+## Quick start
+```bash
+# 1) Pick your interface once (or let Meercata detect)
+sudo IFACE=wlan0 meercata
 
-IDS vs IPS
+# 2) From the menu, choose: 2) IPS-ALL (inline enforce)
+#    – or run directly:
+sudo IFACE=wlan0 BACKEND=auto QUEUE=0 meercata --ips
 
-IDS mode
-Runs Suricata in sniff-only (-i <iface>), no packets are blocked.
+# 3) Live view (Advanced → 14) if suricatamon is installed
+```
 
-IPS-ALL mode
-Runs Suricata in inline mode with NFQUEUE.
-👉 Requires iptables or ufw NFQUEUE hooks.
+> If you only want to **sniff** without blocking, pick **IDS** in the menu or run `meercata --ids`.
 
-Example iptables hook for all traffic:
-iptables -I INPUT   -j NFQUEUE --queue-num 0
-iptables -I OUTPUT  -j NFQUEUE --queue-num 0
-iptables -I FORWARD -j NFQUEUE --queue-num 0
+## Operating modes
+- **IDS (sniff‑only)**:
+  - Stops any running Suricata, flushes NFQUEUE hooks, then runs `suricata -c $CFG -i $IFACE`.
+  - No packets are blocked.
+- **IPS‑ALL (inline)**:
+  - Tests Suricata config, enables fail‑open (if available), installs hooks (nft **or** iptables) and runs `suricata -c $CFG -q $QUEUE`.
+  - FORWARD hooks are **symmetric** (both directions). Loopback and conntrack fast‑path are inserted to avoid self‑lock.
 
-Rules Management
+## Backends: nftables vs xtables
+Meercata can operate with either backend:
 
-Rules are defined in suricata.yaml:
+- **nftables (preferred)**
+  - Creates `table inet suri` with `preraw`/`outraw` chains and queues `{ tcp, udp, icmp, ipv6-icmp }` to `$QUEUE`.
+  - Minimal profile also available (7070 + ICMP/ICMPv6) via Advanced → 11.
+- **xtables (iptables/ip6tables)**
+  - Inserts loopback and conntrack fast‑path **before** NFQUEUE rules.
+  - Queues INPUT/OUTPUT and symmetric FORWARD (iif/oif) to `$QUEUE`.
+
+Select with `BACKEND=auto|nft|xt`. Default is `auto` (prefers nft if present).
+
+## Systemd auto‑start (inline IPS)
+Meercata can install a small unit that wires hooks **before** Suricata starts, and cleans them up on stop:
+
+```bash
+# Install and start on boot (uses current IFACE/QUEUE/BACKEND)
+sudo IFACE=wlan0 QUEUE=0 BACKEND=auto meercata  # open menu
+# Advanced → 5) Install boot auto-start (IPS-ALL + pre-hooks)
+
+# Remove
+# Advanced → 6) Remove boot auto-start
+```
+
+The unit name is `suricata-inline.service`. A small env file is placed at `/etc/default/meercata`.
+
+## Rules management
+Suricata rule files are referenced in `suricata.yaml`:
+
+```yaml
 default-rule-path: /var/lib/suricata/rules
 rule-files:
   - local.rules
   - meercata.rules
+```
 
-Steps:
+Meercata provides:
+- **Rules Insight**: lists enabled/disabled files, path, size, line count.
+- **Checklist enable/disable**: toggles entries in `suricata.yaml` (creates a timestamped backup first).
+- **Open in editor**: select files to open or auto‑create missing paths.
 
-1.Create/edit .rules file in the rules directory.
-2.Add custom rules (examples below).
-3.Use Edit rule-files → Checklist in Meercata to enable/disable.
-4.Reload Suricata from menu.
+> Tip: Put your custom files (e.g., `meercata-nmap.rules`, `meercata-bruteforce.rules`) in the default rule path and enable them via the checklist.
 
-Live Monitor
+## Live monitoring (suricatamon)
+If `/usr/local/bin/suricatamon` is present, Advanced → **14** launches it with wide, SID‑aware output. Otherwise Meercata falls back to tailing `eve.json`.
 
-Advanced → 11 launches suricatamon.
-This gives a colorized, readable stream of Suricata events:
+## YAML summary helper
+Menu **7 → 3** prints a short summary of **active** YAML values:
+- `HOME_NET` / `EXTERNAL_NET`
+- `af-packet`/`pcap` interfaces
+- `nfq` mode/queue/inline/fail-open
 
-2025-09-27 12:03:12 [ALERT] [LOCAL] MEERCATA Brute-force attempt src=192.168.1.100 dst=10.0.0.5
-2025-09-27 12:03:15 [DROP] 192.168.1.100 → 10.0.0.5 proto=tcp reason=policy
-2025-09-27 12:03:20 [DNS] 192.168.1.50 → example.com = 93.184.216.34
+## Environment variables
+You can influence Meercata without editing the script:
 
-🚨 Disclaimer
+| Variable | Default | Meaning |
+|---|---|---|
+| `SURICATA_CFG` | `/etc/suricata/suricata.yaml` | Path to Suricata YAML |
+| `EDITOR` | `vim` | Editor for rule files |
+| `SURICATAMON_BIN` | `/usr/local/bin/suricatamon` | Live monitor path |
+| `LOGFILE` | `/var/log/suricata-mode.log` | Meercata log file |
+| `BACKEND` | `auto` | `auto`, `nft`, or `xt` |
+| `QUEUE` | `0` | NFQUEUE number |
+| `IFACE` | auto‑detected | Interface to bind INPUT/OUTPUT/FORWARD |
 
-This tool is for educational and defensive security purposes.
-Always test in a controlled environment before using in production.
-Works only with NFQUEUE hooks (iptables or ufw).
+Examples:
+```bash
+sudo IFACE=wlan0 QUEUE=1 BACKEND=nft meercata --ips
+sudo SURICATA_CFG=/custom/suricata.yaml meercata --status
+```
 
+## CLI switches
+```
+meercata [--ids | --ips | --flush | --status | --advanced | --help]
+```
+- `--ids` — Start Suricata in sniff‑only mode
+- `--ips` — Start inline IPS with NFQUEUE hooks
+- `--flush` — Remove all NFQUEUE hooks (xtables & nftables)
+- `--status` — Show Suricata and hook status
+- `--advanced` — Jump straight into Advanced menu
 
----
+## Logs
+Operational notes are appended to: `/var/log/suricata-mode.log`.
 
-👉 Do you also want me to create a **sample `rules/` folder** (with `meercata-ddos.rules`, `meercata-bruteforce.rules`, `meercata-nmap.rules`) so GitHub users can test right away without writing rules manually?
+## Troubleshooting
+- **nft flush error**: If you see `flush table inet suri: No such file or directory`, Meercata now deletes the table instead of flushing when absent.
+- **Chat service or established flows getting dropped**: Ensure the **conntrack fast‑path** rules are inserted **before** NFQUEUE (Meercata does this automatically). Also consider allowlisting critical destinations via Advanced → 9.
+- **IPv6**: Meercata manages ip6tables entries when `ip6tables` is available. Verify `HOME_NET` contains your IPv6 prefix, e.g. `"2402:1980:881b:7c5a::/64"`.
+- **Fail‑open**: If `net.netfilter.nf_queue_bypass` is not present, your kernel may not support queue bypass.
+- **UFW**: UFW uses iptables under the hood. If UFW rewrites rules on boot, prefer the **systemd auto‑start** feature so hooks are reapplied before Suricata starts.
+
+## Security notes
+- Always test on a non‑production host first.
+- Keep `HOME_NET`/`EXTERNAL_NET` accurate to avoid over‑blocking.
+- Use allowlists for business‑critical systems and health checks.
+- **Backups**: Meercata creates timestamped backups of `suricata.yaml` before editing rule‑file states. Use Advanced → 7/8 to back up/restore iptables sets.
+
+## Sample rules (optional)
+Consider providing a `rules/` folder in your repo so users can test immediately:
+```
+rules/
+├── meercata-nmap.rules          # detect/drop NULL/FIN/XMAS, with sensible rate-limits
+├── meercata-bruteforce.rules    # SSH/HTTP basic brute-force heuristics
+└── meercata-ddos.rules          # simplistic UDP/TCP flood thresholds
+```
+Example **Nmap** drops (only block scans, not normal traffic):
+```suricata
+# Drop typical Nmap stealth scans
+# Use detection_filter to avoid false positives against busy services
+
+drop tcp any any -> $HOME_NET any (msg:"MEERCATA Nmap NULL"; flags:0; classtype:attempted-recon; sid:60030001; rev:2;)
+drop tcp any any -> $HOME_NET any (msg:"MEERCATA Nmap FIN";  flags:F; classtype:attempted-recon; sid:60030002; rev:2;)
+drop tcp any any -> $HOME_NET any (msg:"MEERCATA Nmap XMAS"; flags:FPU; classtype:attempted-recon; sid:60030003; rev:2;)
+```
+
+## FAQ
+**Q: Can I run IDS mode while nfqueue hooks are present?**  
+A: Meercata flushes hooks before starting IDS to avoid accidental blocking.
+
+**Q: What if my distro already seeds nftables rules?**  
+A: Some appliances reset tables on boot. Use the systemd installer so Meercata reapplies hooks pre‑start.
+
+**Q: Where are env values stored for the boot unit?**  
+A: `/etc/default/meercata` (read by `suricata-inline.service`).
+
+## Contributing
+PRs welcome! Please keep changes POSIX‑ish and avoid external deps where possible. Add tests or reproducible steps for complex changes.
+
+## License
+Choose a license you prefer (e.g., MIT, Apache‑2.0). Include a `LICENSE` file in the repo.
