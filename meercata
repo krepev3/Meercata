@@ -5,6 +5,7 @@
 # - IPv4/IPv6 IPS-ALL via nftables *or* xtables, with symmetric FORWARD plumbing
 # - Fixed: missing backup/restore, OUTPUT allowlist addressing, boot hooks add/remove queues
 # - Optional hardening toggles and conditional dependencies
+# - NEW: toggle runmode (workers/autofp) + NFQ settings (batchcount, fail-open, queue)
 
 set -eEuo pipefail
 IFS=$'\n\t'
@@ -197,7 +198,6 @@ nft_install_queue_all() {
   [[ -n "$NFT_BIN" ]] || { err "nft not found"; return 1; }
   local ifc="${IFACE:-}" match_in="" match_out=""
   [[ -n "$ifc" ]] && match_in="iifname \"$ifc\"" && match_out="oifname \"$ifc\""
-  # Delete existing table if present (avoid 'flush table' error when not exists)
   if $NFT_BIN list table inet suri >/dev/null 2>&1; then $NFT_BIN delete table inet suri; fi
   $NFT_BIN -f - <<EOF
 create table inet suri
@@ -237,7 +237,7 @@ nft_status() {
   fi
 }
 
-# -------- iptables ruleset backup/restore (new) --------
+# -------- iptables ruleset backup/restore --------
 backup_rules() {
   local dir=/var/backups/meercata; mkdir -p "$dir"
   ${IPT_BIN:-iptables}-save >"$dir/iptables.v4" || true
@@ -280,9 +280,16 @@ _flush_queue_backend() {
     nft) nft_flush ;;
     xt)  flush_nfq_xt ;;
     auto)
-      if [[ -n "$NFT_BIN" ]]; then nft_flush; else flush_nfq_xt; fi
+      if [[ -n "$NFT_BIN" ]] ; then nft_flush; else flush_nfq_xt; fi
       ;;
   esac
+}
+
+# force best runmode for NFQ IPS
+_set_runmode_workers_once() {
+  awk '/^[ \t]*runmode:[ \t]*/{print $2; exit}' "$SURICATA_CFG" 2>/dev/null | grep -q '^workers$' || {
+    _yaml_set_runmode "workers"
+  }
 }
 
 suricata_ips_all() {
@@ -294,6 +301,7 @@ suricata_ips_all() {
   printf "%b============================%b\n" "$C_ERR" "$C_RESET"
 
   require_deps
+  _set_runmode_workers_once            # ensure workers for nfq.batchcount validity
   suricata_stop; flush_nfq_xt; nft_flush; test_suricata; ensure_fail_open_on
   _install_queue_backend
 
@@ -319,7 +327,7 @@ _yaml_rulefiles() {
     INBLK {
       line=$0
       if (line ~ /^[ \t]*#[ \t]*-[ \t]*/) {
-        sub(/^[ \t]*#[ \t]*-[ \t]*/, "", line)
+        sub(/^[ \t]*#[ \t]*/, "", line)
         sub(/[ \t]+#.*/, "", line)
         gsub(/["'\'']/, "", line)
         if (line != "") print "disabled\t" line
@@ -497,6 +505,99 @@ yaml_config_summary() {
   ui_pause_redraw
 }
 
+# -------- YAML mutation helpers (runmode + nfq) --------
+_yaml_set_runmode() {
+  local mode="$1" tmp; tmp="$(mktemp)"
+  [[ "$mode" == "workers" || "$mode" == "autofp" ]] || { err "runmode must be workers|autofp"; return 1; }
+  awk -v mode="$mode" '
+    BEGIN{done=0}
+    {
+      if ($0 ~ /^[ \t]*#?[ \t]*runmode:[ \t]*/) {
+        sub(/^[ \t]*#?[ \t]*/, "", $0);
+        sub(/runmode:[ \t]*.*/, "runmode: " mode);
+        print; done=1; next
+      }
+      print
+    }
+    END{
+      if (!done) printf("runmode: %s\n", mode)
+    }
+  ' "$SURICATA_CFG" >"$tmp" && mv "$tmp" "$SURICATA_CFG"
+  ok "Set runmode: $mode"
+}
+
+_yaml_nfq_set_kv() {
+  local key="$1" val="$2" tmp; tmp="$(mktemp)"
+  awk -v key="$key" -v val="$val" '
+    BEGIN{inblk=0; haveblk=0; set=0}
+    /^[ \t]*#/ { print; next }
+    /^[ \t]*nfq:[ \t]*$/ { print "nfq:"; inblk=1; haveblk=1; next }
+    inblk==1 && /^[^ \t#].*:/ { if (!set) printf("  %s: %s\n", key, val); inblk=0 }
+    {
+      if (inblk==1) {
+        line=$0
+        if (line ~ /^[ \t]*#?[ \t]*([A-Za-z0-9_-]+):[ \t]*/) {
+          k=$0; sub(/^[ \t]*#?[ \t]*/, "", k);
+          match(k,/^[A-Za-z0-9_-]+/)
+          kk=substr(k,RSTART,RLENGTH)
+          if (kk==key) { printf("  %s: %s\n", key, val); set=1; next }
+        }
+        print; next
+      } else {
+        print
+      }
+    }
+    END{
+      if (!haveblk) {
+        print "nfq:"
+        printf("  %s: %s\n", key, val)
+      } else if (inblk==1 && !set) {
+        printf("  %s: %s\n", key, val)
+      }
+    }
+  ' "$SURICATA_CFG" >"$tmp" && mv "$tmp" "$SURICATA_CFG"
+  ok "Set nfq.${key}: ${val}"
+}
+
+yaml_runmode_toggle() {
+  local cur
+  cur="$(awk '/^[ \t]*runmode:[ \t]*/{print $2; exit}' "$SURICATA_CFG" 2>/dev/null || true)"
+  [[ -z "$cur" ]] && cur="autofp"
+  local next="workers"; [[ "$cur" == "workers" ]] && next="autofp"
+  _yaml_set_runmode "$next"
+}
+
+yaml_set_nfq_batchcount() {
+  read -rp "nfq.batchcount (number, empty to remove): " bc || true
+  if [[ -z "${bc:-}" ]]; then
+    local tmp; tmp="$(mktemp)"
+    awk '
+      BEGIN{inblk=0}
+      /^[ \t]*nfq:[ \t]*$/ {print; inblk=1; next}
+      inblk==1 && /^[^ \t#].*:/ {inblk=0}
+      { if (!(inblk==1 && $0 ~ /^[ \t]*batchcount:/)) print }
+    ' "$SURICATA_CFG" >"$tmp" && mv "$tmp" "$SURICATA_CFG"
+    ok "Removed nfq.batchcount"
+  else
+    [[ "$bc" =~ ^[0-9]+$ ]] || { err "batchcount must be integer"; return 1; }
+    _yaml_nfq_set_kv "batchcount" "$bc"
+  fi
+}
+
+yaml_set_nfq_failopen() {
+  read -rp "nfq.fail-open (yes/no) [yes]: " ans || true
+  ans="${ans:-yes}"; case "${ans,,}" in
+    y|yes) _yaml_nfq_set_kv "fail-open" "yes" ;;
+    n|no)  _yaml_nfq_set_kv "fail-open" "no"  ;;
+    *) err "Enter yes or no"; return 1 ;;
+  esac
+}
+
+yaml_set_nfq_queue_to_env() {
+  _yaml_nfq_set_kv "queue" "$QUEUE"
+  ok "Aligned YAML nfq.queue to QUEUE=${QUEUE}"
+}
+
 # -------- Status / Diagnostics --------
 status_show() {
   ui_clear
@@ -534,7 +635,6 @@ live_monitor() {
 }
 
 # -------- Boot integration (systemd) --------
-# Creates /etc/default/meercata and a unit that installs hooks before starting Suricata
 install_boot_ips_all() {
   require_deps
   mkdir -p "$(dirname "$ENV_FILE")"
@@ -554,7 +654,6 @@ Wants=network-online.target
 [Service]
 Type=simple
 EnvironmentFile=/etc/default/meercata
-# Pre-hooks ensure queues exist before Suricata starts
 ExecStartPre=/usr/bin/env bash -c 'set -e; case "${BACKEND:-auto}" in nft) if nft list table inet suri >/dev/null 2>&1; then nft delete table inet suri; fi; nft -f - <<NF
 create table inet suri
 add chain inet suri preraw { type filter hook prerouting priority raw; policy accept; }
@@ -575,7 +674,6 @@ add rule inet suri outraw meta l4proto { tcp, udp, icmp, ipv6-icmp } ${IFACE:+oi
 NF
 else iptables --wait -I INPUT 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; iptables --wait -I OUTPUT 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; iptables --wait -I INPUT 2 -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}"; iptables --wait -I OUTPUT 2 -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}"; iptables --wait -I FORWARD 2 -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}"; iptables --wait -I FORWARD 2 -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}"; fi ;; esac'
 ExecStart=/usr/bin/suricata -c ${SURICATA_CFG} -q ${QUEUE}
-# Clean up hooks after exit
 ExecStopPost=/usr/bin/env bash -c 'case "${BACKEND:-auto}" in nft) nft delete table inet suri 2>/dev/null || true ;; xt) iptables --wait -D INPUT -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D OUTPUT -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D FORWARD -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D FORWARD -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; ;; auto) if command -v nft >/dev/null 2>&1; then nft delete table inet suri 2>/dev/null || true; else iptables --wait -D INPUT -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D OUTPUT -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D FORWARD -i "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; iptables --wait -D FORWARD -o "${IFACE}" -j NFQUEUE --queue-num "${QUEUE}" 2>/dev/null || true; fi ;; esac'
 Restart=on-failure
 
@@ -631,8 +729,10 @@ advanced_menu() {
   echo "2)  Choose NFQUEUE number (current: ${QUEUE})"
   echo "3)  Enable fail-open (nf_queue_bypass=1)"
   echo "4)  Disable fail-open (nf_queue_bypass=0)"
-  echo "5)  Install boot auto-start (IPS-ALL + pre-hooks)"
-  echo "6)  Remove boot auto-start"
+  echo "=================================================="
+  echo "5)  EXPERIMENTAL : Install boot auto-start (IPS-ALL + pre-hooks)"
+  echo "6)  EXPERIMENTAL : Remove boot auto-start"
+  echo "=================================================="
   echo "7)  Backup iptables/ip6tables rules"
   echo "8)  Restore iptables/ip6tables rules"
   echo "9)  Insert allowlist rule (before NFQUEUE)"
@@ -643,6 +743,8 @@ advanced_menu() {
   echo "14) Live monitor (suricatamon)"
   echo "15) Back"
   echo "16) Choose backend (current: ${BACKEND})"
+  echo "17) Toggle runmode [workers/autofp] (current: $(awk '/^[ \t]*runmode:[ \t]*/{print $2; exit}' "$SURICATA_CFG" 2>/dev/null || echo autofp))"
+  echo "18) NFQ settings… (batchcount / fail-open / write queue)"
   echo "=================================================="
 }
 
@@ -686,7 +788,7 @@ while true; do
     5)
       while true; do
         advanced_menu
-        read -rp "Advanced [1-16]: " a
+        read -rp "Advanced [1-18]: " a
         case "$a" in
           1)  choose_iface ;;
           2)  choose_queue ;;
@@ -704,6 +806,25 @@ while true; do
           14) live_monitor ;;
           15) break ;;
           16) choose_backend ;;
+          17) yaml_runmode_toggle; test_suricata || true; ui_pause_redraw ;;
+          18)
+            while true; do
+              ui_clear
+              echo "----- NFQ settings -----"
+              echo "1) Set nfq.batchcount"
+              echo "2) Set nfq.fail-open (yes/no)"
+              echo "3) Write YAML nfq.queue = current QUEUE (${QUEUE})"
+              echo "4) Back"
+              read -rp "Select [1-4]: " nf || true
+              case "$nf" in
+                1) yaml_set_nfq_batchcount; test_suricata || true; ui_pause_redraw ;;
+                2) yaml_set_nfq_failopen;  test_suricata || true; ui_pause_redraw ;;
+                3) yaml_set_nfq_queue_to_env; test_suricata || true; ui_pause_redraw ;;
+                4|"") break ;;
+                *) err "Invalid option"; ui_pause_redraw ;;
+              esac
+            done
+            ;;
           *)  err "Invalid option"; ui_pause_redraw ;;
         esac
       done
@@ -732,4 +853,4 @@ while true; do
     8) exit 0 ;;
     *) err "Invalid option"; ui_pause_redraw ;;
   esac
-  done
+done
