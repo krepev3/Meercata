@@ -10,9 +10,16 @@
 <img width="1366" height="704" alt="Screenshot From 2025-11-13 10-55-21" src="https://github.com/user-attachments/assets/3ce0a3d7-f4ef-4c0d-8506-c74c7c5bb20d" />
 # MOnitoring
 <img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/ca12cca6-aa01-4dd4-8c0c-e7e0b0ccad0c" />
-
-
-
+# Baseline
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/ec2e2e60-b1bd-4351-8358-06f8c6f9b9b1" />
+# Advance
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/fc91bafe-3aae-4e89-88ad-1543a196c06e" />
+# Rules Manager
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/141ab8b8-e960-40a5-89a8-3a0cd17312a1" />
+# YAML Config Insight
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/f71de18b-836a-4dfb-a5a8-6a0a76577223" />
+# Table Usage insight (xt/nft/auto by default)
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/203e089d-471f-4808-8cef-8c354b75dcf5" />
 
 ## Table of contents
 
