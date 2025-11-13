@@ -16,6 +16,7 @@
 <img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/fc91bafe-3aae-4e89-88ad-1543a196c06e" />
 # Rules Manager
 <img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/141ab8b8-e960-40a5-89a8-3a0cd17312a1" />
+<img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/8108558a-ff9d-4fc8-9642-86c469f13f05" />
 # YAML Config Insight
 <img width="1366" height="704" alt="image" src="https://github.com/user-attachments/assets/f71de18b-836a-4dfb-a5a8-6a0a76577223" />
 # Table Usage insight (xt/nft/auto by default)
