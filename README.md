@@ -6,6 +6,12 @@
 > Meercata’s IPS enforcement only works when traffic is sent to **NFQUEUE** (iptables/ufw or nftables). If you run Suricata in **AF‑PACKET/PCAP sniff‑only**, Meercata can start IDS, but it will not block traffic.
 
 ---
+# Interactive IPS-Mode
+<img width="1366" height="704" alt="Screenshot From 2025-11-13 10-55-21" src="https://github.com/user-attachments/assets/3ce0a3d7-f4ef-4c0d-8506-c74c7c5bb20d" />
+# MOnitoring
+<img width="1366" height="704" alt="Screenshot From 2025-11-13 10-55-21" src="https://github.com/user-attachments/assets/f17ddf86-4e2d-4bdb-bcb2-703f01eac6dc" />
+
+
 
 ## Table of contents
 
