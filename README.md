@@ -159,7 +159,7 @@ The unit name is `suricata-inline.service`. A small env file is placed at `/etc/
 
 ---
 
-## Boot auto‑start (IPS‑ALL + Pre‑hooks) — IMPORTANT
+## Boot auto‑start (IPS‑ALL + Pre‑hooks) — IMPORTANT (Kernel Lock Up)
 
 **Short version:** installing the boot auto‑start will apply NFQUEUE hooks *before* Suricata starts. This requires proper kernel features and careful testing — otherwise you risk disrupting networking on boot (possible loss of network connectivity until hooks are removed).
 
