@@ -1,4 +1,4 @@
-# Meercata (Python port) — v0.9.0-beta
+# Meercata  — v0.9.0-beta
 
 Python CLI/interactive helper for running Suricata in IDS/IPS mode with NFQUEUE hooks, rule-file management, and a systemd inline unit. Defaults to **dry-run** so you can see commands before applying them.
 
