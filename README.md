@@ -66,6 +66,11 @@ Features:
 - **Firewall tools:** menu shows detected iptables/ip6tables/nft; option to list rules in formatted tables; allowlist insertion helper; backup/restore iptables/ip6tables; counters view.
 - **Systemd inline unit:** `unit-install`/`unit-remove` (dry-run by default). Writes `/etc/default/meercata` and `/etc/systemd/system/suricata-inline.service`.
 
+## Git push (SSH)
+- Remote: `git@github.com:krepev3/Meercata.git`.
+- If using the dedicated key: `GIT_SSH_COMMAND='ssh -i ~/.ssh/meercata_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' git push origin main`.
+- Verify your public key is added to GitHub and permissions are `600` for the private key, `644` for the public key.
+
 ## Behavior at a glance
 - Dry-run vs apply: every command accepts `--apply`; without it, commands are printed/logged instead of executed.
 - Safety checks: ensures binaries exist; validates queue >= 0; requires iface for IDS/IPS; runs `suricata -T` before starting.
