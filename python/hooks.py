@@ -11,52 +11,86 @@ from utils import run
 
 
 def flush_xt(apply: bool, queue: int, iface: str) -> bool:
-    base = ["iptables", "--wait"]
+    base_v4 = ["iptables", "--wait"]
+    base_v6 = ["ip6tables", "--wait"]
     hooks = [
-        base + ["-D", "INPUT", "-j", "NFQUEUE", "--queue-num", str(queue)],
-        base + ["-D", "OUTPUT", "-j", "NFQUEUE", "--queue-num", str(queue)],
-        base + ["-D", "FORWARD", "-j", "NFQUEUE", "--queue-num", str(queue)],
-        base + ["-D", "INPUT", "-i", "lo", "-j", "ACCEPT"],
-        base + ["-D", "OUTPUT", "-o", "lo", "-j", "ACCEPT"],
-        base + ["-D", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-        base + ["-D", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+        (base_v4 + ["-D", "INPUT", "-j", "NFQUEUE", "--queue-num", str(queue)], True),
+        (base_v4 + ["-D", "OUTPUT", "-j", "NFQUEUE", "--queue-num", str(queue)], True),
+        (base_v4 + ["-D", "FORWARD", "-j", "NFQUEUE", "--queue-num", str(queue)], True),
+        (base_v4 + ["-D", "INPUT", "-i", "lo", "-j", "ACCEPT"], True),
+        (base_v4 + ["-D", "OUTPUT", "-o", "lo", "-j", "ACCEPT"], True),
+        (base_v4 + ["-D", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"], True),
+        (base_v4 + ["-D", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"], True),
+        (base_v6 + ["-D", "INPUT", "-j", "NFQUEUE", "--queue-num", str(queue)], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "OUTPUT", "-j", "NFQUEUE", "--queue-num", str(queue)], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "FORWARD", "-j", "NFQUEUE", "--queue-num", str(queue)], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "INPUT", "-i", "lo", "-j", "ACCEPT"], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "OUTPUT", "-o", "lo", "-j", "ACCEPT"], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "INPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"], shutil.which("ip6tables") is not None),
+        (base_v6 + ["-D", "OUTPUT", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"], shutil.which("ip6tables") is not None),
     ]
     if iface:
         hooks.extend([
-            base + ["-D", "FORWARD", "-i", iface, "-j", "NFQUEUE", "--queue-num", str(queue)],
-            base + ["-D", "FORWARD", "-o", iface, "-j", "NFQUEUE", "--queue-num", str(queue)],
+            (base_v4 + ["-D", "FORWARD", "-i", iface, "-j", "NFQUEUE", "--queue-num", str(queue)], True),
+            (base_v4 + ["-D", "FORWARD", "-o", iface, "-j", "NFQUEUE", "--queue-num", str(queue)], True),
+            (base_v6 + ["-D", "FORWARD", "-i", iface, "-j", "NFQUEUE", "--queue-num", str(queue)], shutil.which("ip6tables") is not None),
+            (base_v6 + ["-D", "FORWARD", "-o", iface, "-j", "NFQUEUE", "--queue-num", str(queue)], shutil.which("ip6tables") is not None),
         ])
     ok = True
-    for h in hooks:
+    for h, enabled in hooks:
+        if not enabled:
+            continue
         if not run(h, apply, ignore_errors=True):
             ok = False
     return ok
 
 
 def install_xt(apply: bool, queue: int, iface: str) -> bool:
-    base = ["iptables", "--wait"]
+    base_v4 = ["iptables", "--wait"]
+    base_v6 = ["ip6tables", "--wait"]
     nfq_flags = ["--queue-num", str(queue)]
     cmds: List[List[str]] = [
-        base + ["-I", "INPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-        base + ["-I", "OUTPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
-        base + ["-I", "INPUT", "1", "-i", "lo", "-j", "ACCEPT"],
-        base + ["-I", "OUTPUT", "1", "-o", "lo", "-j", "ACCEPT"],
+        base_v4 + ["-I", "INPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+        base_v4 + ["-I", "OUTPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+        base_v4 + ["-I", "INPUT", "1", "-i", "lo", "-j", "ACCEPT"],
+        base_v4 + ["-I", "OUTPUT", "1", "-o", "lo", "-j", "ACCEPT"],
     ]
+    cmds_v6: List[List[str]] = []
+    if shutil.which("ip6tables"):
+        cmds_v6 = [
+            base_v6 + ["-I", "INPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+            base_v6 + ["-I", "OUTPUT", "1", "-m", "conntrack", "--ctstate", "ESTABLISHED,RELATED", "-j", "ACCEPT"],
+            base_v6 + ["-I", "INPUT", "1", "-i", "lo", "-j", "ACCEPT"],
+            base_v6 + ["-I", "OUTPUT", "1", "-o", "lo", "-j", "ACCEPT"],
+        ]
     if iface:
         cmds.extend([
-            base + ["-I", "INPUT", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
-            base + ["-I", "OUTPUT", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
-            base + ["-I", "FORWARD", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
-            base + ["-I", "FORWARD", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "INPUT", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "OUTPUT", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "FORWARD", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "FORWARD", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
         ])
+        if cmds_v6:
+            cmds_v6.extend([
+                base_v6 + ["-I", "INPUT", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
+                base_v6 + ["-I", "OUTPUT", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
+                base_v6 + ["-I", "FORWARD", "2", "-i", iface, "-j", "NFQUEUE", *nfq_flags],
+                base_v6 + ["-I", "FORWARD", "2", "-o", iface, "-j", "NFQUEUE", *nfq_flags],
+            ])
     else:
         cmds.extend([
-            base + ["-I", "INPUT", "2", "-j", "NFQUEUE", *nfq_flags],
-            base + ["-I", "OUTPUT", "2", "-j", "NFQUEUE", *nfq_flags],
-            base + ["-I", "FORWARD", "2", "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "INPUT", "2", "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "OUTPUT", "2", "-j", "NFQUEUE", *nfq_flags],
+            base_v4 + ["-I", "FORWARD", "2", "-j", "NFQUEUE", *nfq_flags],
         ])
+        if cmds_v6:
+            cmds_v6.extend([
+                base_v6 + ["-I", "INPUT", "2", "-j", "NFQUEUE", *nfq_flags],
+                base_v6 + ["-I", "OUTPUT", "2", "-j", "NFQUEUE", *nfq_flags],
+                base_v6 + ["-I", "FORWARD", "2", "-j", "NFQUEUE", *nfq_flags],
+            ])
     ok = True
-    for c in cmds:
+    for c in cmds + cmds_v6:
         if not run(c, apply):
             ok = False
     return ok

@@ -44,7 +44,7 @@ DEFAULT_CFG = os.environ.get("SURICATA_CFG", "/etc/suricata/suricata.yaml")
 DEFAULT_QUEUE = int(os.environ.get("QUEUE", "0"))
 DEFAULT_BACKEND = os.environ.get("BACKEND", "auto")  # auto|xt|nft
 DEFAULT_IFACE = os.environ.get("IFACE", "")
-SURICATAMON_BIN = os.environ.get("SURICATAMON_BIN", "/usr/local/bin/suricatamon")
+SURICATAMON_BIN = os.environ.get("SURICATAMON_BIN", "builtin")
 DEFAULT_STORE = Path.home() / ".meercata_defaults.json"
 
 # ANSI orange (approx.) for banner; fallback-safe.
