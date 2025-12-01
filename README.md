@@ -1,4 +1,6 @@
 # Meercata  — v0.9.0-beta
+## Bash is the baseline Suricata Interactive Controller (Discontinued)
+## Python is expanding to NGFW Mini
 
 Python CLI/interactive helper for running Suricata in IDS/IPS mode with NFQUEUE hooks, rule-file management, and a systemd inline unit. Defaults to **dry-run** so you can see commands before applying them.
 
