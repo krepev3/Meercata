@@ -17,6 +17,7 @@ python3 main.py rule-set --file local.rules --state enabled --config /etc/surica
 python3 main.py yaml-summary --config /etc/suricata/suricata.yaml
 python3 main.py nfq-queue --queue 0 --config /etc/suricata/suricata.yaml
 python3 main.py unit-install --iface eth0 --queue 0 --backend auto   # dry-run
+python3 main.py monitor --log /var/log/suricata/eve.json             # builtin suricatamon
 ```
 
 Apply (requires root):
@@ -65,6 +66,12 @@ Features:
 - **YAML tweaks:** `yaml-summary` to view HOME_NET/EXTERNAL_NET/capture/nfq; `runmode-set`, `nfq-batchcount`, `nfq-failopen`, `nfq-queue` to adjust NFQ settings; af-packet toggles available via menu.
 - **Firewall tools:** menu shows detected iptables/ip6tables/nft; option to list rules in formatted tables; allowlist insertion helper; backup/restore iptables/ip6tables; counters view.
 - **Systemd inline unit:** `unit-install`/`unit-remove` (dry-run by default). Writes `/etc/default/meercata` and `/etc/systemd/system/suricata-inline.service`.
+- **Monitor:** `monitor` launches the builtin Python suricatamon (colorized eve.json tail). Set `SURICATAMON_BIN` to an external script if preferred.
+
+## Suricatamon (builtin monitor)
+- Runs `python -m suricatamon` to tail `eve.json` with color for alert/flow/dns/tls/http/drop + generic events.
+- Flags/env: `--log` (or `SURICATA_EVE`) for path, `--show-sid` (0/1), `--wide` (0/1). Messages cyan; drops red; tags per type.
+- To use your own script, set `SURICATAMON_BIN=/path/to/suricatamon` before `python3 main.py`.
 
 ## Behavior at a glance
 - Dry-run vs apply: every command accepts `--apply`; without it, commands are printed/logged instead of executed.
@@ -72,6 +79,7 @@ Features:
 - Backups: YAML edits create timestamped backups alongside the file. iptables/ip6tables backups land in `/var/backups/meercata` by default.
 - NFQUEUE hooks: backend auto-picks nft if available, otherwise iptables. Flush/install operations ignore missing rules to avoid noisy errors.
 - Rule-file creation: new files placed under `default-rule-path` and appended to `rule-files:`; table shown after creation for confirmation.
+- IPv6 hooks: NFQUEUE install/flush covers ip6tables where available.
 
 ## Limitations / platform
 - Linux-only (netfilter/NFQUEUE + systemd). No macOS/Windows/FreeBSD support.
