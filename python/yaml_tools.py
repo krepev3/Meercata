@@ -2,17 +2,91 @@
 """YAML helpers for Suricata config."""
 
 import datetime
+import os
+import stat
 import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from platform_support import IS_WINDOWS, suricata_env, suricata_executable
+
 
 def _backup_yaml(cfg: str) -> Path:
-    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     dst = Path(f"{cfg}.{ts}.bak")
     shutil.copy2(cfg, dst)
     print(f"[OK] YAML backup: {dst}")
     return dst
+
+
+def _write_yaml(cfg: str, lines: List[str]) -> Path:
+    """Back up and atomically replace a configuration while preserving metadata."""
+    path = Path(cfg)
+    original_stat = path.stat()
+    backup = _backup_yaml(cfg)
+    temp_name = ""
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp:
+            temp_name = temp.name
+            for line in lines:
+                temp.write(line if line.endswith("\n") else line + "\n")
+            temp.flush()
+            os.fsync(temp.fileno())
+        os.chmod(temp_name, stat.S_IMODE(original_stat.st_mode))
+        if hasattr(os, "chown"):
+            try:
+                os.chown(temp_name, original_stat.st_uid, original_stat.st_gid)
+            except PermissionError:
+                pass
+        os.replace(temp_name, path)
+    except Exception:
+        if temp_name:
+            Path(temp_name).unlink(missing_ok=True)
+        raise
+    suricata = suricata_executable()
+    if suricata:
+        validation = None
+        validation_error = ""
+        try:
+            validation = subprocess.run(
+                [suricata, "-T", "-c", str(path)],
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=suricata_env(suricata),
+                cwd=str(Path(suricata).parent) if IS_WINDOWS else None,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            validation_error = str(exc)
+        if validation is None or validation.returncode != 0:
+            restore_temp = ""
+            try:
+                with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as temp:
+                    restore_temp = temp.name
+                shutil.copy2(backup, restore_temp)
+                os.replace(restore_temp, path)
+            finally:
+                if restore_temp:
+                    Path(restore_temp).unlink(missing_ok=True)
+            output = "" if validation is None else (validation.stderr or validation.stdout)
+            detail = output.strip().splitlines()
+            message = detail[-1] if detail else (validation_error or "unknown validation error")
+            raise RuntimeError(f"Suricata rejected the updated configuration; restored backup: {message}")
+    return backup
+
+
+def restore_yaml_backup(cfg: str, backup: Path) -> None:
+    """Atomically restore a backup created by a configuration edit."""
+    os.replace(backup, cfg)
 
 
 def _read_yaml_lines(cfg: str) -> Optional[List[str]]:
@@ -21,8 +95,8 @@ def _read_yaml_lines(cfg: str) -> Optional[List[str]]:
         print(f"[ERR] YAML not found: {cfg}")
         return None
     try:
-        return path.read_text(encoding="utf-8", errors="ignore").splitlines(True)
-    except OSError as exc:
+        return path.read_text(encoding="utf-8").splitlines(True)
+    except (OSError, UnicodeError) as exc:
         print(f"[ERR] cannot read {cfg}: {exc}")
         return None
 
@@ -47,10 +121,11 @@ def _render_table(headers: List[str], rows: List[Tuple[str, ...]]) -> str:
 
 
 def yaml_default_rule_path(cfg: str) -> str:
+    fallback = str(Path(cfg).resolve().parent / "rules") if IS_WINDOWS else "/var/lib/suricata/rules"
     path = ""
     lines = _read_yaml_lines(cfg)
     if lines is None:
-        return "/var/lib/suricata/rules"
+        return fallback
     for line in lines:
         if line.lstrip().startswith("#"):
             continue
@@ -58,7 +133,7 @@ def yaml_default_rule_path(cfg: str) -> str:
             _, rhs = line.split("default-rule-path:", 1)
             path = rhs.strip().strip("'\"")
             break
-    return path or "/var/lib/suricata/rules"
+    return path or fallback
 
 
 def yaml_rulefiles(cfg: str) -> List[Tuple[str, str]]:
@@ -98,13 +173,16 @@ def yaml_af_packet_entries(cfg: str) -> List[Tuple[str, str, str]]:
     if lines is None:
         return entries
     in_af = False
+    af_indent = 0
     for raw in lines:
+        indent = len(raw) - len(raw.lstrip())
         stripped = raw.lstrip()
         if stripped.startswith("af-packet:"):
             in_af = True
+            af_indent = indent
             continue
         if in_af:
-            if stripped and not stripped.startswith(("-", "#")) and ":" in stripped and not stripped.startswith((" ", "\t")):
+            if stripped and not stripped.startswith("#") and indent <= af_indent:
                 in_af = False
                 continue
             if "- interface:" in stripped:
@@ -116,20 +194,24 @@ def yaml_af_packet_entries(cfg: str) -> List[Tuple[str, str, str]]:
     return entries
 
 
-def yaml_set_af_packet_state(cfg: str, target: str, desired: str) -> bool:
-    assert desired in {"enabled", "disabled"}
+def yaml_set_af_packet_state(cfg: str, target: str, desired: str, apply: bool = True) -> bool:
+    if desired not in {"enabled", "disabled"}:
+        raise ValueError("desired state must be enabled or disabled")
     lines = _read_yaml_lines(cfg)
     if lines is None:
         return False
     in_af = False
+    af_indent = 0
     changed = False
     for idx, raw in enumerate(lines):
+        indent_len = len(raw) - len(raw.lstrip())
         stripped = raw.lstrip()
         if stripped.startswith("af-packet:"):
             in_af = True
+            af_indent = indent_len
             continue
         if in_af:
-            if stripped and not stripped.startswith(("-", "#")) and ":" in stripped and not stripped.startswith((" ", "\t")):
+            if stripped and not stripped.startswith("#") and indent_len <= af_indent:
                 in_af = False
                 continue
             if "- interface:" in stripped:
@@ -149,14 +231,16 @@ def yaml_set_af_packet_state(cfg: str, target: str, desired: str) -> bool:
                             changed = True
                         break
     if changed:
-        _backup_yaml(cfg)
-        with open(cfg, "w", encoding="utf-8") as f:
-            f.writelines(lines)
+        if apply:
+            _write_yaml(cfg, lines)
+        else:
+            print(f"[DRY] would set af-packet interface {target} -> {desired}")
     return changed
 
 
-def yaml_set_rule_state(cfg: str, target: str, desired: str) -> bool:
-    assert desired in {"enabled", "disabled"}
+def yaml_set_rule_state(cfg: str, target: str, desired: str, apply: bool = True) -> bool:
+    if desired not in {"enabled", "disabled"}:
+        raise ValueError("desired state must be enabled or disabled")
     changed = False
     out_lines: List[str] = []
     in_block = False
@@ -183,23 +267,30 @@ def yaml_set_rule_state(cfg: str, target: str, desired: str) -> bool:
                     payload = stripped[2:]
                 payload = payload.split("#", 1)[0].strip().strip("'\"")
                 if payload == target:
-                    new_line = "  - " + target if desired == "enabled" else "  # - " + target
-                    if new_line != current.strip():
-                        current = new_line
+                    is_disabled = stripped.startswith("#")
+                    should_change = (desired == "enabled" and is_disabled) or (desired == "disabled" and not is_disabled)
+                    if should_change:
+                        indent = line[: len(line) - len(stripped)]
+                        if desired == "enabled":
+                            current = indent + stripped.lstrip("# ")
+                        else:
+                            current = indent + "# " + stripped
                         changed = True
                 out_lines.append(current)
                 continue
         out_lines.append(line)
     if changed:
-        _backup_yaml(cfg)
-        with open(cfg, "w", encoding="utf-8") as f:
-            for ln in out_lines:
-                f.write(ln + "\n")
+        if apply:
+            _write_yaml(cfg, out_lines)
+        else:
+            print(f"[DRY] would set rule-file {target} -> {desired}")
     return changed
 
 
 def yaml_add_rulefile(cfg: str, filename: str) -> bool:
     """Append a rule-file entry if it is not already present. Returns True if added."""
+    if not filename.endswith(".rules") or Path(filename).name != filename or Path(filename).is_absolute():
+        raise ValueError("rule filename must be a local .rules filename")
     lines = _read_yaml_lines(cfg)
     if lines is None:
         return False
@@ -256,10 +347,7 @@ def yaml_add_rulefile(cfg: str, filename: str) -> bool:
     if present:
         return False
     if added:
-        _backup_yaml(cfg)
-        with open(cfg, "w", encoding="utf-8") as f:
-            for ln in out_lines:
-                f.write(ln + "\n")
+        _write_yaml(cfg, out_lines)
     return added
 
 
@@ -292,10 +380,12 @@ def yaml_summary(cfg: str) -> None:
     lines = _read_yaml_lines(cfg)
     if lines is None:
         return
-    in_vars = in_addr = in_af = in_pcap = in_nfq = False
+    in_vars = in_addr = in_pcap = in_nfq = False
+    pcap_indent = nfq_indent = 0
     for raw in lines:
         line = raw.rstrip("\n")
         stripped = line.lstrip()
+        indent = len(line) - len(stripped)
         if stripped.startswith("#"):
             continue
         if stripped.startswith("vars:"):
@@ -310,30 +400,26 @@ def yaml_summary(cfg: str) -> None:
             external = stripped.split("EXTERNAL_NET:", 1)[1].strip().strip("'\"")
         if in_addr and (":" in stripped and not stripped.startswith(("-", "HOME_NET", "EXTERNAL_NET"))):
             in_addr = False
-        if stripped.startswith("af-packet:"):
-            in_af = True
-            continue
-        if in_af and stripped.startswith("- interface:"):
-            capture_blocks.append(stripped.split("interface:", 1)[1].strip().strip("'\""))
-        if in_af and (":" in stripped and not stripped.startswith("-")):
-            in_af = False
         if stripped.startswith("pcap:"):
             in_pcap = True
+            pcap_indent = indent
             continue
+        if in_pcap and stripped and indent <= pcap_indent:
+            in_pcap = False
         if in_pcap and stripped.startswith("interface:"):
             capture_blocks.append(stripped.split("interface:", 1)[1].strip().strip("'\""))
-        if in_pcap and (":" in stripped and not stripped.startswith("-") and not stripped.startswith("interface:")):
-            in_pcap = False
         if stripped.startswith("nfq:"):
             in_nfq = True
+            nfq_indent = indent
             continue
+        if in_nfq and stripped and indent <= nfq_indent:
+            in_nfq = False
         if in_nfq and stripped.startswith("-"):
             continue
         if in_nfq and ":" in stripped:
             key, val = stripped.split(":", 1)
             nfq_block.append((key.strip(), val.strip()))
-        if in_nfq and (not stripped or (":" in stripped and not stripped.startswith((" ", "\t")))):
-            in_nfq = False
+    capture_blocks = [iface for state, iface, _ in yaml_af_packet_entries(cfg) if state == "enabled"] + capture_blocks
     print(f"YAML: {cfg}")
     # Networks table
     net_rows = [("HOME_NET", home or "-"), ("EXTERNAL_NET", external or "-")]
@@ -356,7 +442,7 @@ def yaml_summary(cfg: str) -> None:
         print(" (none)")
 
 
-def yaml_set_runmode(cfg: str, mode: str) -> None:
+def yaml_set_runmode(cfg: str, mode: str, apply: bool = True) -> None:
     if mode not in {"workers", "autofp"}:
         print("[ERR] runmode must be workers|autofp")
         return
@@ -370,51 +456,76 @@ def yaml_set_runmode(cfg: str, mode: str) -> None:
         if line.lstrip().startswith("#"):
             lines.append(line)
             continue
-        if "runmode:" in line:
-            new_line = f"runmode: {mode}"
+        if line.lstrip().startswith("runmode:"):
+            indent = line[: len(line) - len(line.lstrip())]
+            new_line = f"{indent}runmode: {mode}"
             if new_line != line.strip():
                 line = new_line
                 changed = True
         lines.append(line)
     if changed:
-        _backup_yaml(cfg)
-        with open(cfg, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
-        print(f"[OK] runmode -> {mode}")
+        if apply:
+            _write_yaml(cfg, lines)
+            print(f"[OK] runmode -> {mode}")
+        else:
+            print(f"[DRY] would set runmode -> {mode}")
     else:
         print("[OK] no change needed")
 
 
-def yaml_set_nfq_kv(cfg: str, key: str, value: str) -> None:
-    lines = []
+def yaml_set_nfq_kv(cfg: str, key: str, value: str, apply: bool = True) -> None:
+    lines: List[str] = []
     in_nfq = False
     set_key = False
+    nfq_indent = ""
     raw_lines = _read_yaml_lines(cfg)
     if raw_lines is None:
         return
     for raw in raw_lines:
         line = raw.rstrip("\n")
         stripped = line.lstrip()
+        indent = line[: len(line) - len(stripped)]
         if stripped.startswith("#"):
             lines.append(line)
             continue
         if stripped.startswith("nfq:"):
             in_nfq = True
-            lines.append("nfq:")
+            nfq_indent = indent
+            lines.append(f"{nfq_indent}nfq:")
             continue
-        if in_nfq and stripped and not stripped.startswith(("-", "#")) and ":" in stripped and not stripped.startswith((" ", "\t")):
-            in_nfq = False
         if in_nfq:
-            if stripped.split(":", 1)[0].strip() == key:
-                lines.append(f"  {key}: {value}")
-                set_key = True
+            # Leaving nfq block when a new top-level/sibling key appears.
+            if stripped and not stripped.startswith(("-", "#")) and ":" in stripped and not line.startswith(f"{nfq_indent}  "):
+                if not set_key:
+                    lines.append(f"{nfq_indent}  {key}: {value}")
+                    set_key = True
+                in_nfq = False
+            if not in_nfq:
+                lines.append(line)
                 continue
+            current_key = stripped.split(":", 1)[0].strip()
+            if current_key == key:
+                lines.append(f"{nfq_indent}  {key}: {value}")
+                set_key = True
+            else:
+                lines.append(line)
+            continue
         lines.append(line)
+
+    if in_nfq and not set_key:
+        lines.append(f"{nfq_indent}  {key}: {value}")
+        set_key = True
+
     if not set_key:
-        if not any(l.strip().startswith("nfq:") for l in lines):
-            lines.append("nfq:")
+        lines.append("nfq:")
         lines.append(f"  {key}: {value}")
-    _backup_yaml(cfg)
-    with open(cfg, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
-    print(f"[OK] nfq.{key} -> {value}")
+
+    original = [raw.rstrip("\n") for raw in raw_lines]
+    if lines == original:
+        print("[OK] no change needed")
+        return
+    if apply:
+        _write_yaml(cfg, lines)
+        print(f"[OK] nfq.{key} -> {value}")
+    else:
+        print(f"[DRY] would set nfq.{key} -> {value}")

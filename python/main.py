@@ -8,6 +8,7 @@ Requires root for --apply when touching firewall/system services.
 import argparse
 import json
 import os
+import re
 import sys
 import subprocess
 from pathlib import Path
@@ -23,9 +24,27 @@ from hooks import (
     show_counters,
     show_firewall_rules,
 )
-from suricata_ctl import live_monitor, status, suricata_ids, suricata_ips
+from preflight import collect_requirements, render_requirements, render_suggestions, required_ok
+from suricata_ctl import (
+    follow_evidence_log,
+    live_monitor,
+    service_status,
+    status,
+    suricata_ids,
+    suricata_ips,
+    suricata_processes,
+)
 from systemd_unit import systemd_install, systemd_remove
-from utils import ensure_binaries
+from platform_support import (
+    IS_WINDOWS,
+    capture_interfaces,
+    default_defaults_store,
+    default_eve_log,
+    default_suricata_config,
+    suricata_executable,
+    suricata_version_hint,
+    valid_capture_target,
+)
 from yaml_tools import (
     _render_table,
     yaml_af_packet_entries,
@@ -40,12 +59,27 @@ from yaml_tools import (
     yaml_summary,
 )
 
-DEFAULT_CFG = os.environ.get("SURICATA_CFG", "/etc/suricata/suricata.yaml")
-DEFAULT_QUEUE = int(os.environ.get("QUEUE", "0"))
+DEFAULT_CFG = os.environ.get("SURICATA_CFG", default_suricata_config())
+try:
+    DEFAULT_QUEUE = int(os.environ.get("QUEUE", "0"))
+except ValueError:
+    DEFAULT_QUEUE = 0
+if not 0 <= DEFAULT_QUEUE <= 65535:
+    DEFAULT_QUEUE = 0
 DEFAULT_BACKEND = os.environ.get("BACKEND", "auto")  # auto|xt|nft
+if DEFAULT_BACKEND not in {"auto", "xt", "nft", "windivert"}:
+    DEFAULT_BACKEND = "auto"
 DEFAULT_IFACE = os.environ.get("IFACE", "")
+DEFAULT_FAIL_MODE = os.environ.get("FAIL_MODE", "open").lower()
+if DEFAULT_FAIL_MODE not in {"open", "closed"}:
+    DEFAULT_FAIL_MODE = "open"
 SURICATAMON_BIN = os.environ.get("SURICATAMON_BIN", "builtin")
-DEFAULT_STORE = Path.home() / ".meercata_defaults.json"
+DEFAULT_WINDIVERT_FILTER = os.environ.get("WINDIVERT_FILTER", "true")
+DEFAULT_TRIGGER_LOG = os.environ.get(
+    "MEERCATA_TRIGGER_LOG",
+    os.environ.get("MEERCATA_DROP_LOG", "./Trigger Drop-Alert.txt"),
+)
+DEFAULT_STORE = default_defaults_store()
 
 # ANSI orange (approx.) for banner; fallback-safe.
 COLOR_ORANGE = "\033[38;5;208m"
@@ -66,18 +100,69 @@ def _print_banner() -> None:
         print(f"{COLOR_ORANGE}{line.rstrip()}{COLOR_RESET}")
 
 
+def _command_ready(
+    command: str,
+    cfg: str = DEFAULT_CFG,
+    backend: str = DEFAULT_BACKEND,
+    iface: str = "",
+    apply: bool = False,
+    log_path: str | None = None,
+) -> bool:
+    checks = collect_requirements(
+        command=command,
+        config=cfg,
+        backend=backend,
+        iface=iface,
+        apply=apply,
+        log_path=log_path,
+    )
+    failures = [check for check in checks if check.required and not check.ok]
+    if failures:
+        print("[ERR] requirement check failed:")
+        print(render_requirements(failures))
+        print()
+        print(render_suggestions(failures))
+        return False
+    return True
+
+
+def startup_requirement_check(cfg: str, backend: str, iface: str) -> bool:
+    """Run the mandatory full preflight before opening interactive Meercata."""
+    checks = collect_requirements(
+        command="check",
+        config=cfg,
+        backend=backend,
+        iface=iface,
+        full=True,
+    )
+    failures = [check for check in checks if check.required and not check.ok]
+    if failures:
+        print("[ERR] Meercata cannot start because required items are unavailable:")
+        print(render_requirements(failures))
+        print()
+        print(render_suggestions(failures))
+        launcher = "meercata.cmd check" if IS_WINDOWS else "python3 main.py check"
+        print(f"\nRun '{launcher}' after resolving the items above.")
+        return False
+    print("[OK] Startup requirements satisfied.")
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Meercata Python port (modular)")
     p.add_argument("--config", default=DEFAULT_CFG, help="suricata.yaml path")
-    p.add_argument("--iface", default=DEFAULT_IFACE, help="interface (required for ids/ips)")
+    p.add_argument("--iface", default=DEFAULT_IFACE, help="capture target (required for IDS; also Linux IPS)")
     p.add_argument("--queue", type=int, default=DEFAULT_QUEUE, help="NFQUEUE number")
-    p.add_argument("--backend", default=DEFAULT_BACKEND, choices=["auto", "xt", "nft"], help="backend preference")
-    p.add_argument("--apply", action="store_true", help="execute commands (otherwise dry-run)")
+    p.add_argument("--backend", default=DEFAULT_BACKEND, choices=["auto", "xt", "nft", "windivert"], help="Linux firewall backend; Windows selects WinDivert automatically")
+    p.add_argument("--fail-mode", default=DEFAULT_FAIL_MODE, choices=["open", "closed"], help="traffic behavior when no NFQUEUE listener exists")
+    p.add_argument("--windivert-filter", default=DEFAULT_WINDIVERT_FILTER, help="Windows IPS WinDivert filter")
+    p.add_argument("--forward", action="store_true", help="use WinDivert forwarding layer for Windows gateway IPS")
+    p.add_argument("--apply", action="store_true", help="apply system and non-interactive YAML changes (otherwise dry-run)")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("ids", help="start Suricata in IDS mode")
-    sub.add_parser("ips", help="start Suricata in IPS-ALL mode")
+    sub.add_parser("ips", help="start Suricata inline (NFQUEUE on Linux, WinDivert on Windows)")
     sub.add_parser("flush", help="flush NFQUEUE hooks")
-    sub.add_parser("status", help="show Suricata/NFQUEUE status")
+    sub.add_parser("status", help="show Suricata service, process, and capture status")
     sub.add_parser("rules", help="show rule-files enabled/disabled")
     rp = sub.add_parser("rule-set", help="enable/disable a rule-file in suricata.yaml")
     rp.add_argument("--file", required=True, help="rule-file name as listed in YAML")
@@ -90,11 +175,12 @@ def parse_args() -> argparse.Namespace:
     nfq_fo = sub.add_parser("nfq-failopen", help="set nfq.fail-open yes/no")
     nfq_fo.add_argument("--value", required=True, choices=["yes", "no"])
     sub.add_parser("nfq-queue", help="write nfq.queue = current queue")
-    unit = sub.add_parser("unit-install", help="install systemd unit for inline mode")
+    unit = sub.add_parser("unit-install", help="install systemd unit for inline mode (Linux only)")
     unit.add_argument("--iface", required=True, help="interface")
     unit.add_argument("--queue", type=int, required=True, help="NFQUEUE number")
     unit.add_argument("--backend", choices=["auto", "xt", "nft"], default=DEFAULT_BACKEND, help="backend preference")
-    sub.add_parser("unit-remove", help="remove systemd unit")
+    unit.add_argument("--fail-mode", choices=["open", "closed"], default=DEFAULT_FAIL_MODE, help="traffic behavior when Suricata is unavailable")
+    sub.add_parser("unit-remove", help="remove systemd unit (Linux only)")
     allow = sub.add_parser("allowlist", help="insert allowlist rule before NFQUEUE")
     allow.add_argument("--direction", choices=["in", "out", "forward"], default="in")
     allow.add_argument("--proto", choices=["tcp", "udp", "all"], default="all")
@@ -104,12 +190,20 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("restore", help="restore iptables/ip6tables rules")
     sub.add_parser("counters", help="show iptables/ip6tables counters")
     monitor = sub.add_parser("monitor", help="launch suricatamon or tail eve.json")
-    monitor.add_argument("--log", default=os.environ.get("SURICATA_EVE", "/var/log/suricata/eve.json"))
-    sub.add_parser("diag", help="show combined status (suricata + NFQUEUE hooks + firewall tools)")
+    monitor.add_argument("--log", default=default_eve_log())
+    monitor.add_argument(
+        "--trigger-log",
+        "--drop-log",
+        dest="trigger_log",
+        default=DEFAULT_TRIGGER_LOG,
+        help="append alerts and actual drops to this hunting-evidence text file; use an empty value to disable",
+    )
+    sub.add_parser("diag", help="show combined Suricata and platform diagnostics")
+    sub.add_parser("check", help="check runtime requirements and show missing dependencies")
     return p.parse_args()
 
 
-def rule_menu(cfg: str) -> None:
+def rule_menu(cfg: str, apply: bool = True) -> None:
     entries = yaml_rulefiles(cfg)
     if not entries:
         print(f"[ERR] no rule-files found in {cfg}")
@@ -136,8 +230,13 @@ def rule_menu(cfg: str) -> None:
         desired = input(f"Set state to [enabled/disabled] (default {suggested}): ").strip().lower()
         if desired not in {"enabled", "disabled"}:
             desired = suggested
-        changed = yaml_set_rule_state(cfg, target_name, desired)
-        print(f"[OK] {target_name} -> {desired}" if changed else "[OK] no change needed")
+        if not _command_ready("rule-menu", cfg=cfg, apply=apply):
+            continue
+        changed = yaml_set_rule_state(cfg, target_name, desired, apply=apply)
+        if changed:
+            print(f"[{'OK' if apply else 'DRY'}] {target_name} -> {desired}")
+        else:
+            print("[OK] no change needed")
         # refresh list after change
         entries = yaml_rulefiles(cfg)
 
@@ -161,7 +260,7 @@ def _pause() -> None:
 
 
 def _clear_screen() -> None:
-    os.system("clear")
+    os.system("cls" if IS_WINDOWS else "clear")
 
 
 def _cfg_status(cfg: str) -> str:
@@ -170,38 +269,20 @@ def _cfg_status(cfg: str) -> str:
 
 
 def _iface_ips() -> dict:
-    """Return mapping of iface -> list of IPv4/IPv6 addresses."""
-    res: Dict[str, List[str]] = {}
-    for fam in ("-4", "-6"):
-        try:
-            out = subprocess.check_output(["ip", "-o", fam, "addr", "show"], text=True)
-        except Exception:
-            continue
-        for line in out.splitlines():
-            parts = line.split()
-            if len(parts) >= 4:
-                iface = parts[1]
-                ip = parts[3].split("/")[0]
-                res.setdefault(iface, []).append(ip)
-    return res
+    """Return capture target -> address/details for the current platform."""
+    return capture_interfaces()
 
 
 def _iface_ok(iface: str) -> bool:
-    return bool(iface) and Path(f"/sys/class/net/{iface}").exists()
+    return valid_capture_target(iface)
 
 
 def _iface_ok_with_ip(iface: str, ipmap: dict) -> bool:
-    return _iface_ok(iface) and iface in ipmap
-
-
-def _require_cfg(cfg: str) -> None:
-    if not Path(cfg).exists():
-        print(f"[ERR] Suricata config not found: {cfg}", file=sys.stderr)
-        sys.exit(1)
+    return _iface_ok(iface) and (not IS_WINDOWS or iface in ipmap or "NPF_" in iface.upper())
 
 
 def _queue_ok(queue: int) -> bool:
-    return queue >= 0
+    return 0 <= queue <= 65535
 
 
 def _parse_queue_input(raw: str, fallback: int) -> Tuple[int, bool]:
@@ -215,15 +296,29 @@ def _parse_queue_input(raw: str, fallback: int) -> Tuple[int, bool]:
 
 
 def diag_status(cfg: str, iface: str, queue: int) -> None:
-    print("[Diag] Suricata service:", _service_status())
-    print("[Diag] Firewall tools:", ", ".join(firewall_capabilities()) or "none detected")
-    hooks_present = existing_hooks(queue, iface)
-    if hooks_present:
-        print("[Diag] NFQUEUE hooks:")
-        for h in hooks_present:
-            print(f"  - {h}")
+    if IS_WINDOWS:
+        print("[Diag] Suricata Windows service:", _service_status())
     else:
-        print("[Diag] NFQUEUE hooks: none for current iface/queue")
+        print("[Diag] Suricata service (standard):", _service_status("suricata.service"))
+        print("[Diag] Meercata inline service:", _service_status("suricata-inline.service"))
+    processes = suricata_processes()
+    if processes:
+        print("[Diag] Suricata processes:")
+        for process in processes:
+            print(f"  - {process}")
+    else:
+        print("[Diag] Suricata processes: none")
+    if IS_WINDOWS:
+        print("[Diag] Capture backend: Npcap/pcap; WinDivert is used only by supported IPS builds")
+    else:
+        print("[Diag] Firewall tools:", ", ".join(firewall_capabilities()) or "none detected")
+        hooks_present = existing_hooks(queue, iface)
+        if hooks_present:
+            print("[Diag] NFQUEUE hooks:")
+            for h in hooks_present:
+                print(f"  - {h}")
+        else:
+            print("[Diag] NFQUEUE hooks: none for current iface/queue")
     if Path(cfg).exists():
         print(f"[Diag] Suricata config: {cfg} (exists)")
     else:
@@ -234,12 +329,17 @@ def _load_defaults() -> tuple[str, str, int, str]:
     if DEFAULT_STORE.exists():
         try:
             data = json.loads(DEFAULT_STORE.read_text())
-            return (
-                data.get("config", DEFAULT_CFG),
-                data.get("iface", DEFAULT_IFACE),
-                int(data.get("queue", DEFAULT_QUEUE)),
-                data.get("backend", DEFAULT_BACKEND),
-            )
+            cfg = str(data.get("config", DEFAULT_CFG))
+            iface = str(data.get("iface", DEFAULT_IFACE))
+            queue = int(data.get("queue", DEFAULT_QUEUE))
+            backend = str(data.get("backend", DEFAULT_BACKEND)).lower()
+            if not _queue_ok(queue):
+                queue = DEFAULT_QUEUE
+            if backend not in {"auto", "xt", "nft", "windivert"}:
+                backend = DEFAULT_BACKEND
+            if iface and not valid_capture_target(iface, require_present=False):
+                iface = DEFAULT_IFACE
+            return cfg, iface, queue, backend
         except Exception:
             return DEFAULT_CFG, DEFAULT_IFACE, DEFAULT_QUEUE, DEFAULT_BACKEND
     return DEFAULT_CFG, DEFAULT_IFACE, DEFAULT_QUEUE, DEFAULT_BACKEND
@@ -247,19 +347,36 @@ def _load_defaults() -> tuple[str, str, int, str]:
 
 def _save_defaults(cfg: str, iface: str, queue: int, backend: str) -> None:
     try:
+        DEFAULT_STORE.parent.mkdir(parents=True, exist_ok=True)
         DEFAULT_STORE.write_text(json.dumps({"config": cfg, "iface": iface, "queue": queue, "backend": backend}))
     except Exception:
         pass
 
 
-def _service_status() -> str:
-    res = subprocess.run(["systemctl", "is-active", "suricata"], text=True, capture_output=True)
-    if res.returncode == 0:
-        return res.stdout.strip() or "active"
-    # Exit code 3 is the normal "inactive" state for systemctl is-active.
-    if res.returncode == 3:
-        return res.stdout.strip() or "inactive"
-    return f"error: {res.stderr.strip() or res.stdout.strip() or 'unknown'}"
+def _service_status(unit: str = "suricata.service") -> str:
+    return service_status(unit)
+
+
+def launch_eve_monitor(cfg: str, backend: str, iface: str) -> None:
+    """Prompt for evidence paths and run the EVE-to-evidence collector."""
+    log = _prompt("EVE log path", default_eve_log())
+    trigger_log = _prompt("Alert/drop evidence log (type 'off' to disable)", DEFAULT_TRIGGER_LOG)
+    if trigger_log.lower() in {"off", "none", "-"}:
+        trigger_log = ""
+    processes = suricata_processes()
+    if not processes:
+        print("[WARN] No Suricata process detected; monitoring will wait for new EVE events.")
+    if _command_ready("monitor", cfg, backend, iface, log_path=log):
+        if trigger_log:
+            print(f"[INFO] Evidence log: {Path(trigger_log).resolve()}")
+        print("[INFO] EVE monitoring and evidence collection will continue until Ctrl+C.")
+        live_monitor(log, SURICATAMON_BIN, trigger_log_path=trigger_log)
+
+
+def launch_threat_monitor() -> None:
+    """Follow the readable threat-evidence file from the main menu."""
+    trigger_log = _prompt("Threat evidence log", DEFAULT_TRIGGER_LOG)
+    follow_evidence_log(trigger_log, lines=100)
 
 
 def menu_suricata(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, str, int, str]:
@@ -275,7 +392,7 @@ def menu_suricata(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, 
         print(f"service={_service_status()}")
         print()
         print("1) IDS (sniff-only)")
-        print("2) IPS (NFQUEUE inline)")
+        print("2) IPS (WinDivert inline)" if IS_WINDOWS else "2) IPS (NFQUEUE inline)")
         print("3) Status")
         print("4) Monitor (tail or suricatamon)")
         print("0) Back")
@@ -289,18 +406,34 @@ def menu_suricata(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, 
                 if not _iface_ok_with_ip(iface, ipmap):
                     iface = _prompt("Interface (required)", iface)
                 apply = _prompt_bool("Apply (execute commands)?", False)
-                suricata_ids(apply, iface, cfg, queue)
+                if _command_ready("ids", cfg, backend, iface, apply):
+                    suricata_ids(apply, iface, cfg, queue)
             elif choice == "2":
-                ipmap = _iface_ips()
-                if not _iface_ok_with_ip(iface, ipmap):
-                    iface = _prompt("Interface (required)", iface)
+                if not IS_WINDOWS:
+                    ipmap = _iface_ips()
+                    if not _iface_ok_with_ip(iface, ipmap):
+                        iface = _prompt("Interface (required)", iface)
                 apply = _prompt_bool("Apply (execute commands)?", False)
-                suricata_ips(apply, iface, cfg, backend, queue)
+                if _command_ready("ips", cfg, backend, iface, apply):
+                    windivert_filter = DEFAULT_WINDIVERT_FILTER
+                    forward = False
+                    if IS_WINDOWS:
+                        windivert_filter = _prompt("WinDivert filter", DEFAULT_WINDIVERT_FILTER)
+                        forward = _prompt_bool("Gateway/forwarding layer?", False)
+                    suricata_ips(
+                        apply,
+                        iface,
+                        cfg,
+                        backend,
+                        queue,
+                        DEFAULT_FAIL_MODE == "open",
+                        windivert_filter,
+                        forward,
+                    )
             elif choice == "3":
                 status()
             elif choice == "4":
-                log = _prompt("Log path for tail", os.environ.get("SURICATA_EVE", "/var/log/suricata/eve.json"))
-                live_monitor(log, SURICATAMON_BIN)
+                launch_eve_monitor(cfg, backend, iface)
             else:
                 print("[ERR] invalid selection")
         except KeyboardInterrupt:
@@ -358,8 +491,9 @@ def menu_rules(cfg: str, queue: int) -> None:
                             desired = _prompt("State (enabled/disabled)", "enabled").lower()
                             if desired not in {"enabled", "disabled"}:
                                 desired = "enabled"
-                            changed = yaml_set_rule_state(cfg, file, desired)
-                            print(f"[OK] {file} -> {desired}" if changed else "[OK] no change needed")
+                            if _command_ready("rule-set", cfg=cfg, apply=True):
+                                changed = yaml_set_rule_state(cfg, file, desired)
+                                print(f"[OK] {file} -> {desired}" if changed else "[OK] no change needed")
                     else:
                         print("[ERR] invalid selection")
                 except KeyboardInterrupt:
@@ -372,8 +506,8 @@ def menu_rules(cfg: str, queue: int) -> None:
             base = yaml_default_rule_path(cfg)
             print(f"Default rule path: {base}")
             name = _prompt("Rule-file name (e.g., custom.rules)", "custom.rules")
-            if not name.endswith(".rules"):
-                print("[ERR] rule-file name must end with .rules")
+            if not name.endswith(".rules") or Path(name).name != name or Path(name).is_absolute():
+                print("[ERR] rule-file name must be a local .rules filename")
                 _pause()
                 continue
             content_lines: List[str] = []
@@ -385,6 +519,9 @@ def menu_rules(cfg: str, queue: int) -> None:
                 content_lines.append(line)
             if not content_lines:
                 print("[WARN] no content entered; aborting")
+                _pause()
+                continue
+            if not _command_ready("rule-add", cfg=cfg, apply=True):
                 _pause()
                 continue
             target_path = Path(base) / name
@@ -440,31 +577,36 @@ def menu_rules(cfg: str, queue: int) -> None:
                                     ans = _prompt(f"Set state to [enabled/disabled] (default {desired})", desired).lower()
                                     if ans not in {"enabled", "disabled"}:
                                         ans = desired
-                                    changed = yaml_set_af_packet_state(cfg, iface_name, ans)
-                                    print(f"[OK] {iface_name} -> {ans}" if changed else "[OK] no change needed")
-                                    print()
-                                    yaml_summary(cfg)
+                                    if _command_ready("af-packet-set", cfg=cfg, apply=True):
+                                        changed = yaml_set_af_packet_state(cfg, iface_name, ans)
+                                        print(f"[OK] {iface_name} -> {ans}" if changed else "[OK] no change needed")
+                                        print()
+                                        yaml_summary(cfg)
                                 else:
                                     print("[ERR] invalid selection")
                         else:
                             print("\n[af-packet] (none)")
                     elif sub == "2":
                         mode = _prompt("Mode (workers/autofp)", "workers")
-                        yaml_set_runmode(cfg, mode)
+                        if _command_ready("runmode-set", cfg=cfg, apply=True):
+                            yaml_set_runmode(cfg, mode)
                     elif sub == "3":
                         val = _prompt("nfq.batchcount value", "64")
-                        yaml_set_nfq_kv(cfg, "batchcount", val)
-                        print()
-                        yaml_summary(cfg)
+                        if _command_ready("nfq-batchcount", cfg=cfg, apply=True):
+                            yaml_set_nfq_kv(cfg, "batchcount", val)
+                            print()
+                            yaml_summary(cfg)
                     elif sub == "4":
                         val = _prompt("nfq.fail-open (yes/no)", "no")
-                        yaml_set_nfq_kv(cfg, "fail-open", val)
-                        print()
-                        yaml_summary(cfg)
+                        if _command_ready("nfq-failopen", cfg=cfg, apply=True):
+                            yaml_set_nfq_kv(cfg, "fail-open", val)
+                            print()
+                            yaml_summary(cfg)
                     elif sub == "5":
-                        yaml_set_nfq_kv(cfg, "queue", str(queue))
-                        print()
-                        yaml_summary(cfg)
+                        if _command_ready("nfq-queue", cfg=cfg, apply=True):
+                            yaml_set_nfq_kv(cfg, "queue", str(queue))
+                            print()
+                            yaml_summary(cfg)
                     else:
                         print("[ERR] invalid selection")
                 except KeyboardInterrupt:
@@ -509,6 +651,9 @@ def menu_hooks(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, str
                 else:
                     print("[INFO] No NFQUEUE hooks detected for queue/iface.")
                 apply = _prompt_bool("Apply (execute flush)?", False)
+                if not _command_ready("flush", cfg, backend, iface, apply):
+                    _pause()
+                    continue
                 if apply and hooks_present:
                     if not _prompt_bool("Confirm flush of the above hooks?", False):
                         print("[INFO] Flush cancelled")
@@ -528,15 +673,18 @@ def menu_hooks(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, str
                 addr = _prompt("IP/CIDR (optional)", "")
                 port = _prompt("Dest port (optional)", "")
                 apply = _prompt_bool("Apply (insert now)?", False)
-                allowlist_insert(apply, direction, proto, addr, port)
+                if _command_ready("allowlist", cfg, backend, iface, apply):
+                    allowlist_insert(apply, direction, proto, addr, port)
             elif choice == "3":
                 show_counters(True)
             elif choice == "4":
                 apply = _prompt_bool("Apply (save rules)?", False)
-                backup_rules(apply)
+                if _command_ready("backup", cfg, backend, iface, apply):
+                    backup_rules(apply)
             elif choice == "5":
                 apply = _prompt_bool("Apply (restore rules)?", False)
-                restore_rules(apply)
+                if _command_ready("restore", cfg, backend, iface, apply):
+                    restore_rules(apply)
             elif choice == "6":
                 show_firewall_rules()
             else:
@@ -570,10 +718,12 @@ def menu_systemd(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, s
             if choice == "1":
                 iface = iface or _prompt("Interface (required)", iface)
                 apply = _prompt_bool("Apply (write unit)?", False)
-                systemd_install(apply, iface, queue, backend, cfg)
+                if _command_ready("unit-install", cfg, backend, iface, apply):
+                    systemd_install(apply, iface, queue, backend, cfg, DEFAULT_FAIL_MODE)
             elif choice == "2":
                 apply = _prompt_bool("Apply (remove unit)?", False)
-                systemd_remove(apply)
+                if _command_ready("unit-remove", cfg, backend, iface, apply):
+                    systemd_remove(apply)
             else:
                 print("[ERR] invalid selection")
         except KeyboardInterrupt:
@@ -586,14 +736,16 @@ def menu_systemd(cfg: str, iface: str, queue: int, backend: str) -> tuple[str, s
 
 def interactive_menu() -> None:
     cfg, iface, queue, backend = _load_defaults()
-    # Ensure suricata binary is present up front for interactive use.
-    ensure_binaries(["suricata"])
-    try:
-        raw = subprocess.check_output(["suricata", "-V"], text=True).strip()
-        cleaned = raw.replace("This is ", "")
-        version = f"Suricata detected: {cleaned}. Applied."
-    except Exception:
-        version = "suricata -V failed"
+    executable = suricata_executable()
+    if IS_WINDOWS and executable:
+        version = f"Suricata detected: {suricata_version_hint(executable)} ({executable})"
+    else:
+        try:
+            raw = subprocess.check_output([executable or "suricata", "-V"], text=True).strip()
+            cleaned = raw.replace("This is ", "")
+            version = f"Suricata detected: {cleaned}."
+        except Exception:
+            version = "suricata -V failed"
     while True:
         _clear_screen()
         _print_banner()
@@ -606,10 +758,12 @@ def interactive_menu() -> None:
         print(f"service state : {_service_status()}")
         print()
         print("1) Suricata control")
-        print("2) Rules / YAML")
-        print("3) Hooks / firewall")
-        print("4) Systemd unit")
-        print("5) Set defaults (config/iface/queue/backend)")
+        print("2) Threat Monitoring (tail evidence continuously)")
+        print("3) Rules / YAML")
+        print("4) Hooks / firewall (Linux only)" if IS_WINDOWS else "4) Hooks / firewall")
+        print("5) Systemd unit (Linux only)" if IS_WINDOWS else "5) Systemd unit")
+        print("6) Set defaults (config/iface/queue/backend)")
+        print("7) Check requirements")
         print("0) Quit")
         print()
         choice = input("Select option: ").strip()
@@ -619,40 +773,59 @@ def interactive_menu() -> None:
         if choice == "1":
             cfg, iface, queue, backend = menu_suricata(cfg, iface, queue, backend)
         elif choice == "2":
-            menu_rules(cfg, queue)
+            _clear_screen()
+            _print_banner()
+            print()
+            print("-- Threat Monitoring --")
+            print("Show the last 100 evidence lines and follow new records continuously.")
+            print()
+            launch_threat_monitor()
+            _pause()
         elif choice == "3":
-            cfg, iface, queue, backend = menu_hooks(cfg, iface, queue, backend)
+            menu_rules(cfg, queue)
         elif choice == "4":
-            cfg, iface, queue, backend = menu_systemd(cfg, iface, queue, backend)
+            if IS_WINDOWS:
+                print("[INFO] Windows does not use Linux NFQUEUE hooks. IDS uses Npcap; IPS requires WinDivert.")
+                _pause()
+            else:
+                cfg, iface, queue, backend = menu_hooks(cfg, iface, queue, backend)
         elif choice == "5":
+            if IS_WINDOWS:
+                print("[INFO] systemd unit management is available only on Linux.")
+                _pause()
+            else:
+                cfg, iface, queue, backend = menu_systemd(cfg, iface, queue, backend)
+        elif choice == "6":
             _clear_screen()
             _print_banner()
             print()
             iface_map = _iface_ips()
             if iface_map:
                 rows_if = [(name, ", ".join(ips)) for name, ips in iface_map.items()]
-                print("[Interfaces with IP]")
-                print(_render_table(["Interface", "IP"], rows_if))
+                print("[Windows capture targets]" if IS_WINDOWS else "[Interfaces with IP]")
+                headers = ["Capture target", "Adapter"] if IS_WINDOWS else ["Interface", "IP"]
+                print(_render_table(headers, rows_if))
                 print()
             rows = [
                 ("Suricata config", cfg, _cfg_status(cfg)),
                 ("Interface", iface or "<none>", "ok" if _iface_ok_with_ip(iface, iface_map) else ("missing" if iface else "blank")),
                 ("Queue", str(queue), ""),
-                ("Backend", backend, backend if backend in {"auto", "xt", "nft"} else "invalid"),
+                ("Backend", backend, backend if backend in {"auto", "xt", "nft", "windivert"} else "invalid"),
             ]
             print(_render_table(["Field", "Value", "Status"], rows))
             print()
             new_cfg = _prompt("Suricata config", cfg)
             new_iface = _prompt("Interface (blank allowed)", iface)
             q_in = _prompt("Queue number", str(queue))
-            new_backend = _prompt("Backend (auto/xt/nft)", backend).lower()
+            backend_choices = "auto/xt/nft/windivert" if IS_WINDOWS else "auto/xt/nft"
+            new_backend = _prompt(f"Backend ({backend_choices})", backend).lower()
             # Validate inputs; keep previous on invalid.
             if Path(new_cfg).exists():
                 cfg = new_cfg
             else:
                 print(f"[WARN] Suricata config not found, keeping previous: {cfg}")
             if new_iface:
-                if Path(f"/sys/class/net/{new_iface}").exists() and new_iface in iface_map:
+                if _iface_ok(new_iface) and new_iface in iface_map:
                     iface = new_iface
                 else:
                     print(f"[WARN] Interface {new_iface} not found or has no IP address, keeping previous: {iface or '<none>'}")
@@ -663,7 +836,8 @@ def interactive_menu() -> None:
                 queue = queue_parsed
             else:
                 print(f"[WARN] Invalid queue '{q_in}', keeping previous: {queue}")
-            if new_backend in {"auto", "xt", "nft"}:
+            valid_backends = {"auto", "xt", "nft", "windivert"} if IS_WINDOWS else {"auto", "xt", "nft"}
+            if new_backend in valid_backends:
                 backend = new_backend
             else:
                 print(f"[WARN] Invalid backend '{new_backend}', keeping previous: {backend}")
@@ -676,7 +850,7 @@ def interactive_menu() -> None:
                 ("Suricata config", cfg, _cfg_status(cfg)),
                 ("Interface", iface or "<none>", "ok" if _iface_ok_with_ip(iface, iface_map) else ("missing" if iface else "blank")),
                 ("Queue", str(queue), ""),
-                ("Backend", backend, backend if backend in {"auto", "xt", "nft"} else "invalid"),
+                ("Backend", backend, backend if backend in {"auto", "xt", "nft", "windivert"} else "invalid"),
             ]
             print("[Updated defaults]")
             print(_render_table(["Field", "Value", "Status"], rows))
@@ -686,8 +860,20 @@ def interactive_menu() -> None:
             else:
                 print("[OK] Defaults recorded; Suricata config path exists.")
             if not iface:
-                print("[WARN] Interface is blank; IDS/IPS and systemd unit require --iface.")
+                warning = "IDS requires --iface." if IS_WINDOWS else "IDS/IPS and systemd unit require --iface."
+                print(f"[WARN] Interface is blank; {warning}")
             _save_defaults(cfg, iface, queue, backend)
+            _pause()
+        elif choice == "7":
+            checks = collect_requirements(
+                command="check",
+                config=cfg,
+                backend=backend,
+                iface=iface,
+                full=True,
+            )
+            print(render_requirements(checks))
+            print("\n[OK] Required checks passed." if required_ok(checks) else "\n[ERR] One or more required checks failed.")
             _pause()
         else:
             print("[ERR] unknown option")
@@ -695,83 +881,108 @@ def interactive_menu() -> None:
 
 def main() -> None:
     if len(sys.argv) == 1:
-        # Interactive experience by default when no args are provided.
+        cfg, iface, _, backend = _load_defaults()
+        if not startup_requirement_check(cfg, backend, iface):
+            sys.exit(1)
         interactive_menu()
         return
 
     args = parse_args()
-    ensure_binaries(["suricata"])
     if not _queue_ok(args.queue):
-        print(f"[ERR] invalid queue '{args.queue}'; must be >= 0", file=sys.stderr)
+        print(f"[ERR] invalid queue '{args.queue}'; must be between 0 and 65535", file=sys.stderr)
         sys.exit(1)
-    if args.apply:
-        if args.backend == "xt":
-            ensure_binaries(["iptables"])
-        elif args.backend == "nft":
-            ensure_binaries(["nft"])
-        else:
-            ensure_binaries(["iptables"])
-    if args.cmd in {"ids", "ips"} and not args.iface:
-        print("[ERR] --iface is required for ids/ips", file=sys.stderr)
+    if (args.cmd == "ids" or (args.cmd == "ips" and not IS_WINDOWS)) and not args.iface:
+        needed_for = "IDS" if IS_WINDOWS else "IDS/IPS"
+        print(f"[ERR] --iface is required for {needed_for}", file=sys.stderr)
         sys.exit(1)
-    if args.cmd in {
-        "ids",
-        "ips",
-        "rules",
-        "rule-set",
-        "rule-menu",
-        "yaml-summary",
-        "runmode-set",
-        "nfq-batchcount",
-        "nfq-failopen",
-        "nfq-queue",
-        "unit-install",
-    }:
-        _require_cfg(args.config)
+    needs_iface = args.cmd == "ids" or (not IS_WINDOWS and args.cmd in {"ips", "unit-install"})
+    if needs_iface and args.iface and not _iface_ok(args.iface):
+        print(f"[ERR] interface does not exist: {args.iface}", file=sys.stderr)
+        sys.exit(1)
+    checks = collect_requirements(
+        command=args.cmd,
+        config=args.config,
+        backend=args.backend,
+        iface=args.iface,
+        apply=args.apply,
+        log_path=getattr(args, "log", None),
+        full=args.cmd == "check",
+    )
+    if args.cmd == "check":
+        print(render_requirements(checks))
+        suggestions = render_suggestions(checks)
+        if suggestions:
+            print()
+            print(suggestions)
+        sys.exit(0 if required_ok(checks) else 1)
+    if not required_ok(checks):
+        print("[ERR] requirement check failed:", file=sys.stderr)
+        failures = [check for check in checks if check.required and not check.ok]
+        print(render_requirements(failures), file=sys.stderr)
+        print(file=sys.stderr)
+        print(render_suggestions(failures), file=sys.stderr)
+        sys.exit(1)
 
     if args.cmd == "ids":
-        suricata_ids(args.apply, args.iface, args.config, args.queue)
+        if not suricata_ids(args.apply, args.iface, args.config, args.queue):
+            sys.exit(1)
     elif args.cmd == "ips":
-        suricata_ips(args.apply, args.iface, args.config, args.backend, args.queue)
+        if not suricata_ips(
+            args.apply,
+            args.iface,
+            args.config,
+            args.backend,
+            args.queue,
+            args.fail_mode == "open",
+            args.windivert_filter,
+            args.forward,
+        ):
+            sys.exit(1)
     elif args.cmd == "flush":
-        flush_all(args.apply, args.queue, args.iface)
+        if not flush_all(args.apply, args.queue, args.iface):
+            sys.exit(1)
     elif args.cmd == "status":
         status()
     elif args.cmd == "rules":
         yaml_rules_insight(args.config)
     elif args.cmd == "rule-set":
-        changed = yaml_set_rule_state(args.config, args.file, args.state)
+        changed = yaml_set_rule_state(args.config, args.file, args.state, apply=args.apply)
         if changed:
-            print(f"[OK] {args.file} -> {args.state}")
+            print(f"[{'OK' if args.apply else 'DRY'}] {args.file} -> {args.state}")
         else:
             print("[OK] no change needed")
     elif args.cmd == "rule-menu":
-        rule_menu(args.config)
+        rule_menu(args.config, apply=args.apply)
     elif args.cmd == "yaml-summary":
         yaml_summary(args.config)
     elif args.cmd == "runmode-set":
-        yaml_set_runmode(args.config, args.mode)
+        yaml_set_runmode(args.config, args.mode, apply=args.apply)
     elif args.cmd == "nfq-batchcount":
-        yaml_set_nfq_kv(args.config, "batchcount", args.value)
+        yaml_set_nfq_kv(args.config, "batchcount", args.value, apply=args.apply)
     elif args.cmd == "nfq-failopen":
-        yaml_set_nfq_kv(args.config, "fail-open", args.value)
+        yaml_set_nfq_kv(args.config, "fail-open", args.value, apply=args.apply)
     elif args.cmd == "nfq-queue":
-        yaml_set_nfq_kv(args.config, "queue", str(args.queue))
+        yaml_set_nfq_kv(args.config, "queue", str(args.queue), apply=args.apply)
     elif args.cmd == "unit-install":
         print("[WARN] Experimental: enabling this unit can break boot if misconfigured. Use with caution.")
-        systemd_install(args.apply, args.iface or DEFAULT_IFACE, args.queue, args.backend, args.config)
+        if not systemd_install(args.apply, args.iface or DEFAULT_IFACE, args.queue, args.backend, args.config, args.fail_mode):
+            sys.exit(1)
     elif args.cmd == "unit-remove":
-        systemd_remove(args.apply)
+        if not systemd_remove(args.apply):
+            sys.exit(1)
     elif args.cmd == "allowlist":
-        allowlist_insert(args.apply, args.direction, args.proto, args.addr, args.port)
+        if not allowlist_insert(args.apply, args.direction, args.proto, args.addr, args.port):
+            sys.exit(1)
     elif args.cmd == "backup":
-        backup_rules(args.apply)
+        if not backup_rules(args.apply):
+            sys.exit(1)
     elif args.cmd == "restore":
-        restore_rules(args.apply)
+        if not restore_rules(args.apply):
+            sys.exit(1)
     elif args.cmd == "counters":
         show_counters(args.apply)
     elif args.cmd == "monitor":
-        live_monitor(args.log, SURICATAMON_BIN)
+        live_monitor(args.log, SURICATAMON_BIN, trigger_log_path=args.trigger_log)
     elif args.cmd == "diag":
         diag_status(args.config, args.iface or DEFAULT_IFACE, args.queue)
     else:
@@ -780,4 +991,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n[INFO] Interrupted by user; exiting.", file=sys.stderr)
+        sys.exit(130)
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"[ERR] {exc}", file=sys.stderr)
+        sys.exit(1)

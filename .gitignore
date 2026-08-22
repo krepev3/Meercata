@@ -1,2 +1,12 @@
-meercata_key
-meercata_key.pub
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp/
+*.egg-info/
+build/
+dist/
+.rules-update/
+Trigger Drop-Alert.txt
+*.bak
+*.tar
+*.tar.gz

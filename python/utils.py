@@ -2,12 +2,22 @@
 """Utility helpers for meercata Python port."""
 
 import shutil
+import shlex
 import subprocess
 import sys
-from typing import List, Optional
+from typing import List, Mapping, Optional
 
 
-def run(cmd: List[str], apply: bool, stdin: Optional[str] = None, force: bool = False, ignore_errors: bool = False) -> bool:
+def run(
+    cmd: List[str],
+    apply: bool,
+    stdin: Optional[str] = None,
+    force: bool = False,
+    ignore_errors: bool = False,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> bool:
     """Execute a command or print it when dry-run. force=True executes even in dry mode.
 
     Returns True on success (or when dry-run), False when execution failed.
@@ -17,14 +27,24 @@ def run(cmd: List[str], apply: bool, stdin: Optional[str] = None, force: bool = 
         try:
             stdout = subprocess.DEVNULL if ignore_errors else None
             stderr = subprocess.DEVNULL if ignore_errors else None
-            subprocess.run(cmd, check=True, text=True, input=stdin, stdout=stdout, stderr=stderr)
+            subprocess.run(
+                cmd,
+                check=True,
+                text=True,
+                input=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                env=env,
+                cwd=cwd,
+                timeout=timeout,
+            )
             return True
-        except subprocess.CalledProcessError as exc:
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             if not ignore_errors:
                 print(f"[ERR] command failed: {' '.join(cmd)} -> {exc}", file=sys.stderr)
             return False
     else:
-        joined = " ".join(cmd)
+        joined = subprocess.list2cmdline(cmd) if sys.platform == "win32" else shlex.join(cmd)
         print(f"[DRY] {joined}")
         if stdin:
             print(stdin.rstrip())
