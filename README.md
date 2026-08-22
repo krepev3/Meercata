@@ -1,47 +1,44 @@
-# Meercata v1.00
+# Meercata v1.00 for Windows
 
-Meercata is a safety-focused command-line and interactive controller for Suricata. It supports Linux IDS/IPS operations and native Windows IDS monitoring with Npcap.
+Meercata v1.00 is a Windows-based Suricata IDS controller and monitoring utility. This repository release targets Windows 10/11 and Windows Server with Suricata and Npcap.
 
-## Current implementation
+The maintained source is in [`Meercata-v1.00-Windows/`](Meercata-v1.00-Windows/).
 
-The actively maintained Python implementation is in [`python/`](python/).
+## Windows capabilities
 
-- Windows 10/11 and Windows Server: Npcap-based passive IDS, service/process status, EVE monitoring, evidence logging, rules, YAML management, and requirement checks.
-- Linux: IDS, NFQUEUE inline IPS, nftables/iptables hooks, rules, YAML management, monitoring, and optional systemd lifecycle.
-- Safe defaults: mutating CLI operations are dry-run unless `--apply` is supplied.
-- Validated YAML edits: timestamped backup, atomic write, Suricata configuration test, and automatic rollback on failure.
-- Tests: 50 passed and 2 platform-specific tests skipped in the validated Windows build.
+- Npcap/pcap passive IDS capture
+- Suricata Windows service and process status
+- Interactive and command-line operation
+- Live EVE JSON monitoring
+- Readable alert and drop evidence logging
+- Rule-file and Suricata YAML management
+- Requirement checks, validation, backups, and rollback protection
+- Native Windows launchers with Administrator/UAC support
 
-## Windows quick start
+## Requirements
+
+- Windows 10/11 or Windows Server
+- Python 3.10 or newer
+- Suricata with Npcap support
+- Npcap
+- Administrator rights for packet capture, service operations, and protected configuration changes
+
+## Quick start
 
 ```powershell
-cd python
+cd Meercata-v1.00-Windows
 .\meercata.cmd check
 .\meercata-admin.cmd
 ```
 
-For a running Suricata Windows service, use **Suricata control -> Status** and **Suricata control -> Monitor**. See [`python/WINDOWS.md`](python/WINDOWS.md) for setup and operating details.
+For a running Suricata Windows service, use **Suricata control -> Status** and **Suricata control -> Monitor**.
 
-## Linux quick start
+## Important mode note
 
-```bash
-cd python
-./meercata check
-./meercata
-```
+The validated v1.00 deployment is a passive IDS: it detects and logs traffic but does not block it. Windows inline IPS requires a Suricata build with WinDivert enabled.
 
-See [`python/README.md`](python/README.md) for the full command reference, safety model, and platform notes.
+## Linux roadmap
 
-## Tests
+Meercata v2 for Linux is a separate work in progress and is not part of this Windows v1.00 release.
 
-```bash
-cd python
-python -m pytest -q
-```
-
-## Repository layout
-
-- `python/` - current cross-platform Meercata v1.00 implementation
-- `Bash/` - discontinued baseline retained for historical reference
-
-Operational logs, EVE data, evidence files, caches, staged rules, and local configuration backups are intentionally excluded from version control.
+Operational logs, EVE data, evidence files, rule archives, caches, and machine-specific configuration backups are intentionally excluded from this public repository.
