@@ -1,0 +1,119 @@
+{
+  "checks": [
+    {
+      "check_id": "tls.trusted-ca",
+      "details": {
+        "delivered": true,
+        "http_status": 202
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "tls.hostname-refused",
+      "details": {
+        "collector_requests_unchanged": true,
+        "result": "transport-error"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "auth.retired-token-refused",
+      "details": {
+        "http_status": 401,
+        "result": "remote-rejected",
+        "unauthorized": 1
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "auth.current-token-accepted",
+      "details": {
+        "delivered": true,
+        "http_status": 202
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "collector.duplicate-deduplicated",
+      "details": {
+        "delivered": true,
+        "duplicates": 1,
+        "http_status": 200
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "outage.retry-persisted",
+      "details": {
+        "pending": 1,
+        "retried": 1
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "outage.delivery-recovered",
+      "details": {
+        "delivered": 1,
+        "pending": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "tls.ca-rotation",
+      "details": {
+        "new_ca_delivered": true,
+        "new_ca_http_status": 202,
+        "old_ca_blocked_before_http": true,
+        "old_ca_result": "transport-error"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.pending-healthy",
+      "details": {
+        "exit_code": 0,
+        "pending": 1,
+        "status": "healthy"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.retry-degraded",
+      "details": {
+        "before_due_attempted": 0,
+        "exit_code": 1,
+        "retrying": 1,
+        "status": "degraded"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.age-critical",
+      "details": {
+        "exit_code": 2,
+        "oldest_pending_age_seconds": 1801,
+        "recovered_exit_code": 0,
+        "status": "critical"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.dead-letter-critical",
+      "details": {
+        "dead_letters": 1,
+        "exit_code": 2,
+        "status": "critical"
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "qualification used an automatically removed loopback collector and generated disposable keys",
+    "no production endpoint, credential, certificate authority, DNS, proxy, or external network was used",
+    "collector clustering, regional failover, rate limits, and long-duration availability were not exercised",
+    "systemd PID 1 execution and production secret provisioning remain separate deployment gates"
+  ],
+  "project_version": "2.0.0.dev24",
+  "schema_version": 1,
+  "status": "monitor-tls-qualified"
+}

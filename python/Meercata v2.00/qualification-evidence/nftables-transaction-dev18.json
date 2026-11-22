@@ -1,0 +1,93 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.namespace",
+      "details": {
+        "architecture": "x86_64",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "interfaces": ["lo"],
+        "ipv4_routes": 0,
+        "network_namespace": "net:[4026532806]",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "transaction.commit",
+      "details": {
+        "fail_open": true,
+        "semantic_sha256": "1db784e62cf1720a5ac3b7898a9dabadd7d895176697d23bbd5b048a1e3d6bdc",
+        "transaction_id": "0f1b4ee5-fbcb-44d0-aaba-0c5305c23241"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "transaction.forced-rollback",
+      "details": {
+        "restored_semantic_sha256": "1db784e62cf1720a5ac3b7898a9dabadd7d895176697d23bbd5b048a1e3d6bdc",
+        "restored_transaction_id": "0f1b4ee5-fbcb-44d0-aaba-0c5305c23241",
+        "state": "ROLLED_BACK",
+        "transaction_id": "8f6b9d4c-92cb-43e5-aa07-970f251ff95e"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "receipts.root-private",
+      "details": {
+        "files": 5,
+        "first_activation_state": "applied",
+        "mode": "0600",
+        "second_rollback_applied": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "emergency.bypass",
+      "details": {
+        "incident_id": "INC-DEV18-QUALIFICATION",
+        "reason": "recovery-failed",
+        "removed": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "audit.dual-stream",
+      "details": {
+        "controller_events": 16,
+        "privileged_events": 15
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "isolation.unrelated-preserved",
+      "details": {
+        "preserved": true,
+        "semantic_sha256": "207646f1ec3e1bec65a2f60e43e71d81a2903bd85beb905041cac3fa32f31bbc"
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the run mutated nftables only inside a disposable container network namespace",
+    "Suricata and a userspace NFQUEUE listener were not started",
+    "packet verdicts, listener loss, overload, throughput, and latency remain unqualified",
+    "public IPS CLI activation, systemd lifecycle, crash, and reboot behavior remain gated"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "interfaces": ["lo"],
+    "ipv4_routes": 0,
+    "network_namespace": "net:[4026532806]",
+    "os_id": "debian",
+    "version_id": "13"
+  },
+  "project_version": "2.0.0.dev18",
+  "schema_version": 1,
+  "status": "nftables-transaction-qualified"
+}

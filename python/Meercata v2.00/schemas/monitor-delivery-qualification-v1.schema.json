@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-delivery-qualification-v1.schema.json",
+  "title": "Meercata monitor delivery qualification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "project_version", "checks", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "monitor-delivery-qualified" },
+    "project_version": { "enum": ["2.0.0.dev23", "2.0.0.dev24"] },
+    "checks": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "outbox.transition-enqueued",
+              "outbox.duplicate-suppressed",
+              "delivery.retry-deferred",
+              "delivery.accepted",
+              "delivery.dead-lettered",
+              "crash.receipt-reconciled",
+              "freshness.stale-detected",
+              "integrity.unsafe-endpoint-refused"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": { "type": "object", "minProperties": 1, "maxProperties": 8 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

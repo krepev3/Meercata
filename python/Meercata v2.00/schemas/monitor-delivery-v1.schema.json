@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-delivery-v1.schema.json",
+  "title": "Meercata monitor delivery outputs v1",
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "sequence",
+        "created_utc",
+        "attempts",
+        "next_attempt_epoch",
+        "last_error",
+        "event"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "event_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "created_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "attempts": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "next_attempt_epoch": { "type": "integer", "minimum": 0 },
+        "last_error": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-z0-9.-]{1,64}$" }
+          ]
+        },
+        "event": {
+          "type": "object",
+          "required": ["schema_version", "event", "sequence", "reason", "current", "state_after"]
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "generated_utc",
+        "status",
+        "attempted",
+        "delivered",
+        "retried",
+        "dead_lettered",
+        "pending"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "generated_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "status": { "const": "delivery-complete" },
+        "attempted": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "delivered": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "retried": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "dead_lettered": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "pending": { "type": "integer", "minimum": 0, "maximum": 1000 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "pending",
+        "dead_letters",
+        "receipts",
+        "next_attempt_utc"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "status": { "const": "delivery-status" },
+        "pending": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "dead_letters": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "receipts": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "next_attempt_utc": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1, "maxLength": 64 }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "generated_utc",
+        "status",
+        "exit_code",
+        "pending",
+        "due_pending",
+        "retrying",
+        "dead_letters",
+        "oldest_pending_age_seconds",
+        "last_receipt",
+        "thresholds"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "generated_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "status": { "enum": ["healthy", "degraded", "critical", "unknown"] },
+        "exit_code": { "enum": [0, 1, 2, 3] },
+        "pending": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "due_pending": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "retrying": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "dead_letters": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "oldest_pending_age_seconds": {
+          "oneOf": [{ "type": "null" }, { "type": "integer" }]
+        },
+        "last_receipt": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "generated_utc"],
+              "properties": {
+                "status": { "enum": ["delivered", "dead-letter"] },
+                "generated_utc": { "type": "string", "minLength": 1, "maxLength": 64 }
+              }
+            }
+          ]
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pending_warning",
+            "pending_critical",
+            "age_warning_seconds",
+            "age_critical_seconds"
+          ],
+          "properties": {
+            "pending_warning": { "const": 100 },
+            "pending_critical": { "const": 500 },
+            "age_warning_seconds": { "const": 300 },
+            "age_critical_seconds": { "const": 1800 }
+          }
+        }
+      }
+    },
+    {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/envelope" }
+    }
+  ]
+}

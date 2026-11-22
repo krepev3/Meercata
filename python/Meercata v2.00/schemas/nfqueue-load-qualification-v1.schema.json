@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/nfqueue-load-qualification-v1.schema.json",
+  "title": "Meercata bounded NFQUEUE load qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "project_version", "profile", "checks", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "nfqueue-load-qualified" },
+    "project_version": { "const": "2.0.0.dev20" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normal_seconds", "normal_accept_workers", "normal_drop_workers",
+        "normal_max_pending_packets", "listener_loss_seconds",
+        "listener_loss_success_floor", "overload_max_pending_packets",
+        "overload_connections", "overload_workers"
+      ],
+      "properties": {
+        "normal_seconds": { "const": 6.0 },
+        "normal_accept_workers": { "const": 8 },
+        "normal_drop_workers": { "const": 4 },
+        "normal_max_pending_packets": { "const": 256 },
+        "listener_loss_seconds": { "const": 6.0 },
+        "listener_loss_success_floor": { "const": 0.9 },
+        "overload_max_pending_packets": { "const": 16 },
+        "overload_connections": { "const": 128 },
+        "overload_workers": { "const": 64 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "platform.bounded",
+              "topology.routed",
+              "suricata.nfq-capability",
+              "policy.transaction-commit",
+              "load.mixed-correctness",
+              "load.queue-integrity",
+              "load.resources",
+              "load.suricata-stats",
+              "failure.listener-loss-under-load",
+              "overload.detected-and-bypassed"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": { "type": "object", "minProperties": 1, "maxProperties": 16 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

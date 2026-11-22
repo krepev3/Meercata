@@ -1,0 +1,33 @@
+[Unit]
+Description=Verify Meercata scheduled monitoring freshness
+Documentation=file:/usr/share/doc/meercata/MONITORING.md
+After=meercata-monitor.service
+
+[Service]
+Type=oneshot
+User=meercata
+Group=meercata
+ExecStart=/usr/bin/meercata monitor freshness --json
+UMask=0077
+TimeoutStartSec=10s
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+
+# No [Install] section: the timer is the supported activation path.

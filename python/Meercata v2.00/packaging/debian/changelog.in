@@ -1,0 +1,6 @@
+meercata (@DEBIAN_VERSION@) unstable; urgency=medium
+
+  * Development package for qualified Meercata v2 production hardening.
+  * Not approved for production deployment or public repository upload.
+
+ -- Meercata Maintainers <meercata-maintainers@users.noreply.github.com>  Sat, 15 Aug 2026 00:00:00 +0000

@@ -1,0 +1,41 @@
+[Unit]
+Description=Meercata private Suricata NFQUEUE engine
+Documentation=file:/usr/share/doc/meercata/IPS-SYSTEMD.md
+Conflicts=suricata.service
+After=network-pre.target
+Before=meercata-ips-activate.service
+PartOf=meercata-ips.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStartPre=/usr/lib/meercata/bin/meercata-ips-engine test
+ExecStart=/usr/lib/meercata/bin/meercata-ips-engine run
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=90s
+TimeoutStopSec=60s
+OOMPolicy=stop
+KillMode=mixed
+UMask=0027
+RuntimeDirectory=suricata
+RuntimeDirectoryMode=0750
+LimitNOFILE=65536
+TasksMax=4096
+PrivateTmp=true
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/run/suricata /var/log/suricata /var/lib/suricata
+
+# No [Install]: meercata-ips.target is the only supported activation boundary.

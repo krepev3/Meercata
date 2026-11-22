@@ -1,0 +1,11 @@
+/var/log/meercata/monitor/transitions.jsonl /var/log/meercata/monitor/delivery-receipts.jsonl {
+    su meercata meercata
+    weekly
+    size 4M
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0600 meercata meercata
+}

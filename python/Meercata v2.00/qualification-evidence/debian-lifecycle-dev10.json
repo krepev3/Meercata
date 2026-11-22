@@ -1,0 +1,95 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.container",
+      "details": {
+        "architecture": "x86_64",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.build",
+      "details": {
+        "architecture": "all",
+        "artifacts": 3,
+        "payload_directories": 9,
+        "payload_files": 66,
+        "revisions": [
+          "2.0.0~dev10-1",
+          "2.0.0~dev10-2",
+          "2.0.0~dev10-3"
+        ],
+        "sha256": [
+          "3c51a0fb146066e048f8f747fc41bef2c0faa1387f6b07c013a0cbe043995d76",
+          "0450b0799fe8852066bb791cb3ed3921cd26aa26896be5b6a7c19e03d298ebf9",
+          "eff4930281e20c812eaad8af66ae6a60e2a44d8f81327301846807bc4054792d"
+        ]
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.install",
+      "details": {
+        "active_configuration_installed": false,
+        "health_timer_enabled": false,
+        "required_root_files": 4
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.configure-idempotent",
+      "details": {
+        "repeated": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.upgrade",
+      "details": {
+        "from": "2.0.0~dev10-1",
+        "to": "2.0.0~dev10-2"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.modified-upgrade-rejected",
+      "details": {
+        "exit_code": 1,
+        "installed_version_preserved": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "deb.remove",
+      "details": {
+        "preserved_data_roots": 3,
+        "privileged_artifacts_absent": 5,
+        "service_identity_preserved": true
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the package is unsigned and was installed directly with dpkg",
+    "the Suricata dependency was ignored because no live Suricata daemon was installed",
+    "systemd was not PID 1, so daemon reload, unit enablement, timer execution, and restart behavior were not exercised",
+    "purge was not exercised because Meercata intentionally has no automatic data/config purge contract"
+  ],
+  "package": "meercata",
+  "platform": {
+    "architecture": "x86_64",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "os_id": "debian",
+    "version_id": "13"
+  },
+  "project_version": "2.0.0.dev10",
+  "schema_version": 1,
+  "status": "debian-lifecycle-qualified"
+}

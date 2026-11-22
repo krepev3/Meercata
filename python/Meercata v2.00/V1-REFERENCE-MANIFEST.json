@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-10",
+  "source": "../Meercata v1.00",
+  "algorithm": "sha256",
+  "verification": {
+    "command": "python3 -m pytest -q",
+    "result": "44 passed"
+  },
+  "excluded": [
+    "__pycache__/",
+    ".pytest_cache/",
+    ".pytest_tmp/",
+    "Trigger Drop-Alert.txt",
+    "runtime logs, threat evidence, backups, and user data"
+  ],
+  "files": {
+    ".gitignore": "a5c74ae323cd4f81294e7620dbdee6eaa7b085a1b53aa859621f7c3087079960",
+    "README.md": "9109e7566b9c49a4bcdc302fac125d2a78e43ef5f06a90b4227ee48b04f01fcf",
+    "hooks.py": "2b4ffc7e4dc245f12961801b72c2c93c36731b4d6d71580ae86443e5fb7267f2",
+    "main.py": "57f1cbb1badb4127e886e2017770c0b140750c99a5ef97acc11a68121dd40f83",
+    "meercata": "cc3f3d59c6e277ebe87b2851a5514da7258e67750f6b7ed941882c0186191dfb",
+    "preflight.py": "2b5ccd480774fe9ae3a8704d6df6e4fd0e2d4482a60c01056077fa9b1554f8b7",
+    "pyproject.toml": "91d36a8999849260959bd7ecd71fa0063783740073d01abed1cbd4f23a879084",
+    "suricata_ctl.py": "b24f8dc6f6efd51ba4f339fba7fc254bfbb07067a296f2bda0bf0a7d1d40d0aa",
+    "suricatamon.py": "3254ff357fc9f476b08cd27fdc8a5ae8a670940af607da7cda766b17993986d8",
+    "systemd_unit.py": "20de8c9da4b9c5954d8c9259d68bae6ba88a8d03be6329dbb0a9c0c0bfb8bd71",
+    "tests/test_hooks.py": "1b68945244009877e37b0406b79b3cee7c38272a9215ea04644ee03b38978029",
+    "tests/test_main.py": "e69bb3d42424827bf2464522d4d2963e01fdd99406f8e3818f20e0b7870f3027",
+    "tests/test_preflight.py": "cb9b3e44800be3940665930e3dc5c72fc620e56989969d6031be853dacc4efac",
+    "tests/test_status.py": "4fffeea5d37bd414519b4b6572e476b20c467f028003a4b1b3caff3ced3a9a57",
+    "tests/test_suricata_ctl.py": "4a841e3aed74d273d8eac54728759d3c9437b1831d74326046ac653371ed1efc",
+    "tests/test_suricatamon.py": "2f84afc1ec168b43c8e865df9950998f0d10aefacbf53da631c6de43f53d8940",
+    "tests/test_systemd_unit.py": "990d3eab0ef83d412310dc4a7d834a93eb60315f72fa85fde5318f4639954d43",
+    "tests/test_yaml_tools.py": "cc8482d958b6492ab2cc246d1c756f7233ba7286265d61c6d68dd049c5613d5a",
+    "utils.py": "3644332839b6a80dd01644dfa948d8942174245842fbe3a1a7a9e750e3744ad0",
+    "yaml_tools.py": "1902aa134f2ba7e21f60c74c2d655f763b24f2d217f32849e6ec340e8bc44dac"
+  }
+}

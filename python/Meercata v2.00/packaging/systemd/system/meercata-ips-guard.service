@@ -1,0 +1,34 @@
+[Unit]
+Description=Meercata NFQUEUE listener and overload safety guard
+Documentation=file:/usr/share/doc/meercata/IPS-SYSTEMD.md
+Requires=meercata-ips-activate.service
+After=meercata-ips-activate.service
+PartOf=meercata-ips.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/meercata/bin/meercata-ips-guard
+ExecStopPost=/usr/lib/meercata/bin/meercata-ips-bootstrap failsafe
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=60s
+UMask=0077
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_NETLINK
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_DAC_OVERRIDE CAP_AUDIT_WRITE
+ReadWritePaths=/var/lib/meercata/privileged /var/log/meercata/privileged
+
+# No [Install]: meercata-ips.target owns lifecycle ordering.

@@ -1,0 +1,35 @@
+[Unit]
+Description=Deliver durable Meercata monitor transitions
+Documentation=file:/usr/share/doc/meercata/MONITORING.md
+Wants=network-online.target
+After=network-online.target meercata-monitor.service
+
+[Service]
+Type=oneshot
+User=meercata
+Group=meercata
+ExecStart=/usr/bin/meercata monitor deliver --json
+UMask=0077
+TimeoutStartSec=45s
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/meercata/monitor /var/log/meercata/monitor /run/meercata/monitor
+
+# No [Install] section: the timer is the supported activation path.

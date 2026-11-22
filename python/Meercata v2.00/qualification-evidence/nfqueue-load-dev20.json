@@ -1,0 +1,173 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.bounded",
+      "details": {
+        "architecture": "x86_64",
+        "capabilities": [
+          "CAP_NET_ADMIN",
+          "CAP_SYS_ADMIN"
+        ],
+        "cgroup_limits": {
+          "cpu_cores": 2.0,
+          "memory_bytes": 1073741824,
+          "pids": 512
+        },
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "interfaces": [
+          "lo"
+        ],
+        "ipv4_routes": 0,
+        "isolation_profile": "network-none with IPv4 forwarding, NET_ADMIN, SYS_ADMIN, seccomp-unconfined, apparmor-unconfined",
+        "kernel_nfqueue_backend": "available-before-run",
+        "network_namespace": "net:[4026532905]",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "topology.routed",
+      "details": {
+        "baseline_bytes": 1048576,
+        "baseline_sha256": "e335c89377c278eabfd5fca137165ad28743965b5739a6ef708817e9a0e5f48b",
+        "client_namespace": "meercata-client",
+        "server_address": "10.88.0.2"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "suricata.nfq-capability",
+      "details": {
+        "exclusive_rule_sid": 9900019,
+        "nfqueue_support": true,
+        "version": "Suricata version 8.0.6 RELEASE"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.transaction-commit",
+      "details": {
+        "fail_open": true,
+        "interface": "lan0",
+        "queue": 42,
+        "semantic_sha256": "94b45ae416f23029611e52ebea78b16fac9b2116319f5d63e95a724bb6bff355",
+        "transaction_id": "613aafef-8e5b-48b0-95ea-a20021129640"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "load.mixed-correctness",
+      "details": {
+        "accept_corrupt": 0,
+        "accept_failures": 0,
+        "accept_successes": 227,
+        "accepted_bytes": 238026752,
+        "classification": "bounded-synthetic-load-not-capacity",
+        "drop_blocked": 68,
+        "drop_unexpected_accepts": 0,
+        "duration_seconds": 6.265,
+        "goodput_mbps": 303.951,
+        "latency_median_ms": 206.656,
+        "latency_p95_ms": 310.134
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "load.queue-integrity",
+      "details": {
+        "nft_packets_after": 146565,
+        "nft_packets_before": 0,
+        "queue_dropped_delta": 0,
+        "queue_total_peak": 749,
+        "samples": 62,
+        "user_dropped_delta": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "load.resources",
+      "details": {
+        "cpu_percent_one_core": 117.8,
+        "duration_seconds": 6.265,
+        "rss_ceiling_bytes": 805306368,
+        "rss_max_bytes": 69922816,
+        "rss_min_bytes": 57270272,
+        "sample_count": 62,
+        "threads_max": 11
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "load.suricata-stats",
+      "details": {
+        "alert_queue_overflow": 0,
+        "flow_emergency_entered": 0,
+        "ips_accepted": 258958,
+        "ips_blocked": 68,
+        "ips_nfq_error": 0,
+        "memcap_pressure_max": 5,
+        "tcp_reassembly_gap": 0,
+        "tcp_segment_memcap_drop": 0,
+        "tcp_session_memcap_drop": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "failure.listener-loss-under-load",
+      "details": {
+        "accepted_bytes": 1436549120,
+        "attempts": 1370,
+        "corrupt": 0,
+        "failures": 0,
+        "injection": "SIGKILL",
+        "listener_present": false,
+        "recovery_duration_ms": 27.734,
+        "recovery_port": 9090,
+        "required_success_floor": 0.9,
+        "success_ratio": 1.0,
+        "successes": 1370
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "overload.detected-and-bypassed",
+      "details": {
+        "burst_attempts": 128,
+        "burst_connected": 2,
+        "burst_failed": 126,
+        "bypass_removed_policy": true,
+        "incident_id": "INC-DEV20-QUALIFICATION",
+        "max_pending_packets": 16,
+        "queue_dropped_delta": 3,
+        "queue_total_peak": 64,
+        "recovery_bytes": 1048576,
+        "recovery_sha256": "e335c89377c278eabfd5fca137165ad28743965b5739a6ef708817e9a0e5f48b",
+        "user_dropped_delta": 0
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "results describe one bounded disposable-container run, not deployable production capacity",
+    "synthetic HTTP traffic does not represent a deployment protocol, packet-size, or rule-mix distribution",
+    "intentional queue saturation validates detection and emergency bypass, not lossless overload handling",
+    "multi-queue scaling, NIC behavior, 24-72 hour soak, installed IPS systemd recovery, and reboot remain unqualified"
+  ],
+  "profile": {
+    "listener_loss_seconds": 6.0,
+    "listener_loss_success_floor": 0.9,
+    "normal_accept_workers": 8,
+    "normal_drop_workers": 4,
+    "normal_max_pending_packets": 256,
+    "normal_seconds": 6.0,
+    "overload_connections": 128,
+    "overload_max_pending_packets": 16,
+    "overload_workers": 64
+  },
+  "project_version": "2.0.0.dev20",
+  "schema_version": 1,
+  "status": "nfqueue-load-qualified"
+}

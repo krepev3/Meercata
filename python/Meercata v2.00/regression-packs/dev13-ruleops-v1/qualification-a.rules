@@ -1,0 +1,1 @@
+alert udp any any -> any 65013 (msg:"MEERCATA Dev13 RuleOps qualification"; content:"MEERCATA-QUALIFICATION-DEV13"; sid:9900013; rev:1;)

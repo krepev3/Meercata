@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "status": "recovery-vm-qualified",
+  "project_version": "2.0.0.dev16",
+  "platform": {
+    "os_id": "debian",
+    "version_id": "13",
+    "architecture": "x86_64",
+    "pid1": "systemd",
+    "virtualization": "kvm",
+    "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+    "effective_uid": 0,
+    "effective_gid": 0
+  },
+  "checks": [
+    {
+      "check_id": "platform.vm",
+      "status": "passed",
+      "details": {
+        "os_id": "debian",
+        "version_id": "13",
+        "architecture": "x86_64",
+        "pid1": "systemd",
+        "virtualization": "kvm",
+        "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+        "effective_uid": 0,
+        "effective_gid": 0
+      }
+    },
+    {
+      "check_id": "packages.installed",
+      "status": "passed",
+      "details": {
+        "meercata": "2.0.0~dev16-1",
+        "suricata": "1:8.0.6-1~bpo13+1",
+        "suricata-update": "1.3.8-1~bpo13+1"
+      }
+    },
+    {
+      "check_id": "supervision.policy",
+      "status": "passed",
+      "details": {
+        "type": "notify",
+        "restart": "on-failure",
+        "restart_delay_seconds": 10,
+        "start_limit_burst": 3,
+        "start_limit_interval_seconds": 300,
+        "startup_timeout_seconds": 90,
+        "shutdown_timeout_seconds": 60,
+        "oom_policy": "stop"
+      }
+    },
+    {
+      "check_id": "crash.auto-restart",
+      "status": "passed",
+      "details": {
+        "signal": "SIGKILL",
+        "before_pid": 1575,
+        "after_pid": 2101,
+        "before_restart_count": 0,
+        "after_restart_count": 1,
+        "active_state": "active",
+        "sub_state": "running"
+      }
+    },
+    {
+      "check_id": "crash.start-limit",
+      "status": "passed",
+      "details": {
+        "additional_sigkills": 3,
+        "active_state": "failed",
+        "result": "start-limit-enforced",
+        "service_result": "signal",
+        "restart_count": 4,
+        "start_attempt_exit_code": 1,
+        "burst": 3,
+        "interval_seconds": 300
+      }
+    },
+    {
+      "check_id": "recovery.manual",
+      "status": "passed",
+      "details": {
+        "reset_failed": true,
+        "active_state": "active",
+        "sub_state": "running",
+        "main_pid": 2702,
+        "health_status": "healthy",
+        "healthy_checks": 15
+      }
+    },
+    {
+      "check_id": "reboot.boot-changed",
+      "status": "passed",
+      "details": {
+        "before": "1410cf42-00c2-423f-911d-70aebb0ea717",
+        "after": "3f379ac6-ec1a-47a4-b5f5-41294ceb784f"
+      }
+    },
+    {
+      "check_id": "reboot.services",
+      "status": "passed",
+      "details": {
+        "active_state": "active",
+        "sub_state": "running",
+        "type": "notify",
+        "main_pid": 740,
+        "exec_main_status": 0,
+        "result": "success",
+        "restart_count": 0,
+        "drop_in": "/usr/lib/systemd/system/suricata.service.d/50-meercata-production.conf",
+        "socket_path": "/run/suricata/suricata-command.socket",
+        "socket_root_owned": true,
+        "socket_world_writable": false,
+        "timer_enabled": true,
+        "timer_active": true,
+        "timer_sub_state": "waiting",
+        "timer_unit": "meercata-health.service",
+        "on_boot": "2min",
+        "interval": "1min",
+        "triggered_this_boot": true,
+        "health_oneshot_result": "success"
+      }
+    },
+    {
+      "check_id": "health.after-reboot",
+      "status": "passed",
+      "details": {
+        "status": "healthy",
+        "exit_code": 0,
+        "mode": "ids",
+        "checks": 15,
+        "healthy_checks": 15,
+        "socket_version": "8.0.6 RELEASE",
+        "capture_mode": "AF_PACKET_DEV",
+        "capture_interface": ["enp0s2"]
+      }
+    },
+    {
+      "check_id": "protected.integrity",
+      "status": "passed",
+      "details": {
+        "files": {
+          "configuration": {
+            "path": "/etc/meercata/meercata.toml",
+            "sha256": "71d680c1c9f03d1883640ea620fe2fe1d3d0de2af38611ac4a2a066407e0f5c8",
+            "size_bytes": 1058,
+            "mode": "0640"
+          },
+          "active_rules": {
+            "path": "/var/lib/suricata/rules/suricata.rules",
+            "sha256": "2705cda0e02b88413f8872d3d0f0eb16d3910c1ece892ad2715e0dc4fadebd48",
+            "size_bytes": 45169687,
+            "mode": "0640"
+          },
+          "package_manifest": {
+            "path": "/usr/lib/meercata/package-manifest.json",
+            "sha256": "d761219bacdb9a93d80e6ce4fa45699e9fe1e0cad7f7185ba6b3216af714ce36",
+            "size_bytes": 19351,
+            "mode": "0644"
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "the Meercata artifact was installed only in a disposable qualification VM",
+    "bounded SIGKILL failures were exercised; OOM, kernel panic, disk failure, and abrupt power loss were not",
+    "only IDS service and health-timer recovery were exercised; IPS and NFQUEUE were not",
+    "interrupted RuleOps transactions, HA failover, retention, removal, and purge were not exercised"
+  ]
+}

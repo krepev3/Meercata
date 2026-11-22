@@ -1,0 +1,58 @@
+schema_version = 1
+
+[health]
+mode = "ids"
+interface = "eth0"
+queue = 0
+eve_path = "/var/log/suricata/eve.json"
+socket_path = "/run/suricata/suricata-command.socket"
+
+eve_stale_warning_seconds = 30
+eve_stale_critical_seconds = 120
+packet_stall_seconds = 30
+disk_warning_percent_free = 15
+disk_critical_percent_free = 5
+memory_warning_percent_used = 85
+memory_critical_percent_used = 95
+process_rss_warning_percent = 25
+process_rss_critical_percent = 40
+process_cpu_warning_percent = 80
+process_cpu_critical_percent = 95
+packet_drop_warning_percent = 1
+packet_drop_critical_percent = 5
+reassembly_gap_warning_percent = 0.01
+reassembly_gap_critical_percent = 0.1
+watch_interval_seconds = 5
+socket_timeout_seconds = 2
+
+[monitor_delivery]
+# Delivery remains disabled until meercata-monitor-delivery.timer is explicitly enabled.
+# Install the token separately as root:meercata mode 0640; never place it in TOML.
+endpoint = "https://monitoring.example.invalid/v1/meercata-events"
+token_file = "/etc/meercata/credentials/monitor-token"
+# Optional private-CA bundle; omit to use the operating-system trust store.
+# ca_file = "/etc/meercata/credentials/collector-ca.pem"
+timeout_seconds = 10
+max_attempts = 8
+base_retry_seconds = 30
+max_retry_seconds = 3600
+batch_size = 20
+
+[ips]
+# Initial production inline scope is intentionally fail-open and gateway-only.
+# The interface and queue are shared with [health] to prevent configuration drift.
+fail_policy = "open"
+traffic_scope = "gateway-forward"
+
+[rules]
+# Phase 3 initially permits only the Emerging Threats Open source.
+source = "et/open"
+minimum_rule_count = 1
+maximum_reduction_percent = 5
+update_timeout_seconds = 600
+validation_timeout_seconds = 120
+regression_timeout_seconds = 300
+reload_timeout_seconds = 120
+reload_poll_seconds = 1
+active_rules_path = "/var/lib/suricata/rules/suricata.rules"
+suricata_config_path = "/etc/suricata/suricata.yaml"

@@ -1,0 +1,70 @@
+{
+  "checks": [
+    {
+      "check_id": "transition.baseline",
+      "details": {
+        "affected": 1,
+        "sequence": 1,
+        "status": "critical"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "transition.deduplicated",
+      "details": {
+        "consecutive": 2,
+        "transition_emitted": false
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "transition.conditions-changed",
+      "details": {
+        "reason": "conditions-changed",
+        "sequence": 2
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "transition.recovered",
+      "details": {
+        "reason": "recovered",
+        "sequence": 3,
+        "status": "healthy"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "crash.state-repaired",
+      "details": {
+        "events": 3,
+        "sequence": 3,
+        "transition_emitted": false
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "integrity.invalid-state-refused",
+      "details": {
+        "refused": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "retention.oversize-refused",
+      "details": {
+        "active_limit_bytes": 8388608,
+        "refused": true
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "qualification used synthetic health reports in an automatically removed local filesystem",
+    "systemd syntax and package ownership are covered by separate package qualification",
+    "no external collector, credential, network delivery, or long-duration soak was exercised"
+  ],
+  "project_version": "2.0.0.dev22",
+  "schema_version": 1,
+  "status": "monitoring-qualified"
+}

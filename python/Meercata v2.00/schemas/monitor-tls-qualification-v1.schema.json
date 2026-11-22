@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-tls-qualification-v1.schema.json",
+  "title": "Meercata loopback TLS and delivery-health qualification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "checks",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "monitor-tls-qualified"
+    },
+    "project_version": {
+      "const": "2.0.0.dev24"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": false,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "tls.trusted-ca"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "delivered": true,
+                "http_status": 202
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "tls.hostname-refused"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "result": "transport-error",
+                "collector_requests_unchanged": true
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "auth.retired-token-refused"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "result": "remote-rejected",
+                "http_status": 401,
+                "unauthorized": 1
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "auth.current-token-accepted"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "delivered": true,
+                "http_status": 202
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "collector.duplicate-deduplicated"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "delivered": true,
+                "http_status": 200,
+                "duplicates": 1
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "outage.retry-persisted"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "retried": 1,
+                "pending": 1
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "outage.delivery-recovered"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "delivered": 1,
+                "pending": 0
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "tls.ca-rotation"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "old_ca_result": "transport-error",
+                "new_ca_delivered": true,
+                "new_ca_http_status": 202,
+                "old_ca_blocked_before_http": true
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "health.pending-healthy"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "status": "healthy",
+                "exit_code": 0,
+                "pending": 1
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "health.retry-degraded"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "status": "degraded",
+                "exit_code": 1,
+                "retrying": 1,
+                "before_due_attempted": 0
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "health.age-critical"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "status": "critical",
+                "exit_code": 2,
+                "oldest_pending_age_seconds": 1801,
+                "recovered_exit_code": 0
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ],
+          "properties": {
+            "check_id": {
+              "const": "health.dead-letter-critical"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "const": {
+                "status": "critical",
+                "exit_code": 2,
+                "dead_letters": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  }
+}

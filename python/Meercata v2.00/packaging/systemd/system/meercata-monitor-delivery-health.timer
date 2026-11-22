@@ -1,0 +1,13 @@
+[Unit]
+Description=Evaluate Meercata monitor delivery pressure every minute
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1min
+AccuracySec=10s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=meercata-monitor-delivery-health.service
+
+[Install]
+WantedBy=timers.target

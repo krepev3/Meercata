@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/deb-build-v1.schema.json",
+  "title": "Meercata Debian package build report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "debian_version",
+    "architecture",
+    "artifact",
+    "sha256",
+    "size_bytes",
+    "payload_files",
+    "payload_directories",
+    "verification"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "built-and-verified" },
+    "project_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.dev[0-9]+$"
+    },
+    "debian_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+~dev[0-9]+-[1-9][0-9]{0,2}$"
+    },
+    "architecture": { "const": "all" },
+    "artifact": {
+      "type": "string",
+      "pattern": "^meercata_[0-9]+\\.[0-9]+\\.[0-9]+~dev[0-9]+-[1-9][0-9]{0,2}_all\\.deb$"
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "size_bytes": { "type": "integer", "minimum": 1, "maximum": 134217728 },
+    "payload_files": { "type": "integer", "minimum": 1, "maximum": 512 },
+    "payload_directories": { "type": "integer", "minimum": 1, "maximum": 32 },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "version",
+        "architecture",
+        "root_owned_archive_entries",
+        "manifest_files",
+        "maintainer_scripts",
+        "active_configuration_included"
+      ],
+      "properties": {
+        "package": { "const": "meercata" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "architecture": { "const": "all" },
+        "root_owned_archive_entries": { "const": true },
+        "manifest_files": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "maintainer_scripts": { "const": 4 },
+        "active_configuration_included": { "const": false }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/rule-candidate-v1.schema.json",
+  "title": "Meercata Rule Candidate v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "source",
+    "created_utc",
+    "status",
+    "summary",
+    "validation",
+    "regression"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "candidate_id": { "type": "string", "format": "uuid" },
+    "source": { "const": "et/open" },
+    "created_utc": { "type": "string", "format": "date-time" },
+    "status": {
+      "enum": [
+        "building",
+        "build_failed",
+        "policy_passed",
+        "policy_rejected",
+        "validated",
+        "validation_failed",
+        "regression_passed",
+        "regression_failed"
+      ]
+    },
+    "summary": { "type": "object" },
+    "difference": { "type": "object" },
+    "validation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["pending", "passed", "failed"] }
+      }
+    },
+    "regression": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["pending", "passed", "failed"] }
+      }
+    }
+  }
+}

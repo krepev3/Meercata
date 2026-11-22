@@ -1,0 +1,79 @@
+{
+  "checks": [
+    {
+      "check_id": "outbox.transition-enqueued",
+      "details": {
+        "pending": 1,
+        "sequence": 1
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "outbox.duplicate-suppressed",
+      "details": {
+        "pending": 1,
+        "transition_emitted": false
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "delivery.retry-deferred",
+      "details": {
+        "before_due_attempted": 0,
+        "retried": 1
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "delivery.accepted",
+      "details": {
+        "delivered": 1,
+        "transport_calls": 2
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "delivery.dead-lettered",
+      "details": {
+        "attempts": 1,
+        "dead_lettered": 1,
+        "last_error": "remote-rejected"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "crash.receipt-reconciled",
+      "details": {
+        "attempted": 0,
+        "pending": 0,
+        "transport_calls": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "freshness.stale-detected",
+      "details": {
+        "age_seconds": 181,
+        "exit_code": 2,
+        "status": "stale"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "integrity.unsafe-endpoint-refused",
+      "details": {
+        "refused": true
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "qualification used injected transport results and an automatically removed local filesystem",
+    "verified-TLS behavior is unit-covered but no external endpoint or production credential was used",
+    "systemd execution and package ownership are covered by separate package qualification",
+    "collector availability, certificate rotation, proxy behavior, and long-duration soak were not exercised"
+  ],
+  "project_version": "2.0.0.dev24",
+  "schema_version": 1,
+  "status": "monitor-delivery-qualified"
+}

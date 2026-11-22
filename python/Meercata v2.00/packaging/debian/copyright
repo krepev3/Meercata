@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Meercata
+
+Files: *
+Copyright: 2026 Meercata maintainers
+License: Proprietary
+ This software is proprietary. Redistribution and use require permission
+ from the Meercata maintainers.

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-qualification-v1.schema.json",
+  "title": "Meercata durable monitoring qualification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "project_version", "checks", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "monitoring-qualified" },
+    "project_version": { "enum": ["2.0.0.dev22", "2.0.0.dev24"] },
+    "checks": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "transition.baseline",
+              "transition.deduplicated",
+              "transition.conditions-changed",
+              "transition.recovered",
+              "crash.state-repaired",
+              "integrity.invalid-state-refused",
+              "retention.oversize-refused"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": { "type": "object", "minProperties": 1, "maxProperties": 8 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

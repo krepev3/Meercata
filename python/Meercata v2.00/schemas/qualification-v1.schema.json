@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/qualification-v1.schema.json",
+  "title": "Meercata staged-image qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "package",
+    "version",
+    "checks",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "staged-qualified" },
+    "package": { "const": "meercata" },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[0-9A-Za-z.+-]+$"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "package.manifest",
+              "python.imports",
+              "sudoers.syntax",
+              "systemd.units",
+              "sysusers.materialize",
+              "tmpfiles.dry-run"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": {
+            "type": "object",
+            "maxProperties": 8
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.container",
+      "details": {
+        "architecture": "x86_64",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "package.install",
+      "details": {
+        "directories": 9,
+        "files": 58
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "sysusers.apply",
+      "details": {
+        "operator_gid": 997,
+        "operator_membership": false,
+        "service_gid": 996,
+        "service_uid": 996
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "tmpfiles.apply",
+      "details": {
+        "root_owned_private": 3,
+        "verified_directories": 6
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "package.ownership",
+      "details": {
+        "verified_root_owned_files": 59
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "launchers.execute",
+      "details": {
+        "cli_user": "meercata",
+        "helper_operations": 5
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "sudoers.authorization",
+      "details": {
+        "ruleops_authorized": false,
+        "service_user_health_only": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "systemd.units",
+      "details": {
+        "verified_units": 3
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "data.preservation",
+      "details": {
+        "active_configuration_installed": false,
+        "preserved_roots": 3
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "systemd unit syntax was verified but systemd was not PID 1",
+    "a minimal Suricata unit/executable fixture was used; live Suricata readiness and socket behavior were not exercised",
+    "native package signature, upgrade, downgrade, removal, and purge were not exercised",
+    "IDS/IPS traffic, nftables, NFQUEUE, restart, crash, and reboot behavior were not exercised"
+  ],
+  "package": "meercata",
+  "platform": {
+    "architecture": "x86_64",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "os_id": "debian",
+    "version_id": "13"
+  },
+  "schema_version": 1,
+  "status": "container-installed-qualified",
+  "version": "2.0.0.dev9"
+}

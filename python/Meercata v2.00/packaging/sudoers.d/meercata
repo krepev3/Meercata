@@ -1,0 +1,8 @@
+# Managed by the Meercata package. Validate with visudo before installation.
+Cmnd_Alias MEERCATA_RULEOPS = /usr/lib/meercata/bin/meercata-helper ^rules\.(snapshot|activate|rollback|reload) [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+Cmnd_Alias MEERCATA_HEALTH = /usr/lib/meercata/bin/meercata-helper health.socket-snapshot
+Cmnd_Alias MEERCATA_NFTABLES = /usr/lib/meercata/bin/meercata-helper ^nftables\.(snapshot|apply|verify|rollback) [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+Cmnd_Alias MEERCATA_BYPASS = /usr/lib/meercata/bin/meercata-helper ^emergency\.bypass (listener-loss|queue-overload|recovery-failed) INC-[A-Z0-9][A-Z0-9._-]{2,63}$
+
+%meercata-operators ALL=(root) NOPASSWD: MEERCATA_RULEOPS, MEERCATA_HEALTH, MEERCATA_NFTABLES, MEERCATA_BYPASS
+meercata ALL=(root) NOPASSWD: MEERCATA_HEALTH

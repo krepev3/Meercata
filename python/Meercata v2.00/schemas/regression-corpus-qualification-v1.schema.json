@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/regression-corpus-qualification-v1.schema.json",
+  "title": "Meercata production regression corpus qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "pack_id",
+    "pack_manifest_sha256",
+    "source",
+    "cases",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "regression-corpus-qualified" },
+    "project_version": { "const": "2.0.0.dev14" },
+    "pack_id": { "const": "production-baseline-v1" },
+    "pack_manifest_sha256": {
+      "const": "f72b5890cc06aaf986219d0c40b7b9f656ca18eac660dbe3157b09f940bab2cc"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleset_sha256",
+        "ruleset_size_bytes",
+        "active_rules",
+        "disabled_rules",
+        "suricata_version",
+        "suricata_update_version"
+      ],
+      "properties": {
+        "ruleset_sha256": {
+          "const": "4ddb3e3e443306f49bf8d5ab9419a696a05455b1056b3f55e546ddb91d398a4e"
+        },
+        "ruleset_size_bytes": { "const": 45169550 },
+        "active_rules": { "const": 52322 },
+        "disabled_rules": { "const": 15941 },
+        "suricata_version": { "const": "8.0.6 RELEASE" },
+        "suricata_update_version": { "const": "1.3.8" }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "pcap_sha256",
+          "status",
+          "total_alerts",
+          "observed_relevant_alerts"
+        ],
+        "properties": {
+          "case_id": {
+            "enum": [
+              "dns-scan-positive",
+              "http-exploit-positive",
+              "tcp-response-positive",
+              "udp-remote-positive",
+              "dns-benign",
+              "http-benign",
+              "tls-benign"
+            ]
+          },
+          "pcap_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "status": { "const": "passed" },
+          "total_alerts": { "type": "integer", "minimum": 0, "maximum": 64 },
+          "observed_relevant_alerts": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["gid", "sid", "count"],
+              "properties": {
+                "gid": { "const": 1 },
+                "sid": { "enum": [2001597, 2031459, 2032091, 2100498] },
+                "count": { "const": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

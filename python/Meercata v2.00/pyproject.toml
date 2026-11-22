@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meercata"
+version = "2.0.0.dev24"
+description = "CLI-only transactional control plane for Suricata"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Meercata maintainers" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8", "jsonschema>=4"]
+
+[project.scripts]
+meercata = "meercata.cli:main"
+meercata-helper = "meercata.privileged_helper:main"
+
+[tool.setuptools]
+packages = ["meercata"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--basetemp=.pytest_tmp"
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["meercata"]

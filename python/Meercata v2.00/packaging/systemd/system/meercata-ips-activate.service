@@ -1,0 +1,36 @@
+[Unit]
+Description=Apply and remove the owned Meercata IPS policy in safe order
+Documentation=file:/usr/share/doc/meercata/IPS-SYSTEMD.md
+Requires=meercata-suricata-ips.service
+After=meercata-suricata-ips.service
+Before=meercata-ips-guard.service
+PartOf=meercata-ips.target
+
+[Service]
+Type=oneshot
+User=root
+Group=meercata-operators
+ExecStart=/usr/lib/meercata/bin/meercata-ips-bootstrap activate
+ExecStop=/usr/lib/meercata/bin/meercata-ips-bootstrap deactivate
+RemainAfterExit=true
+TimeoutStartSec=90s
+TimeoutStopSec=60s
+UMask=0027
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_DAC_OVERRIDE CAP_AUDIT_WRITE
+ReadWritePaths=/var/lib/meercata /var/log/meercata /run/meercata
+
+# No [Install]: meercata-ips.target owns lifecycle ordering.

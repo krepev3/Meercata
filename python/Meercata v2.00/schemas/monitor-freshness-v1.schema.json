@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-freshness-v1.schema.json",
+  "title": "Meercata scheduled-monitor freshness v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_utc",
+    "status",
+    "exit_code",
+    "age_seconds",
+    "threshold_seconds",
+    "last_observed_utc",
+    "sequence"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "status": { "enum": ["fresh", "stale", "uninitialized", "unknown"] },
+    "exit_code": { "enum": [0, 2, 3] },
+    "age_seconds": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 }
+      ]
+    },
+    "threshold_seconds": { "const": 180 },
+    "last_observed_utc": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 64 }
+      ]
+    },
+    "sequence": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "minimum": 1 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.vm",
+      "details": {
+        "architecture": "x86_64",
+        "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "os_id": "debian",
+        "pid1": "systemd",
+        "version_id": "13",
+        "virtualization": "kvm"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "packages.installed",
+      "details": {
+        "meercata": "2.0.0~dev13-1",
+        "suricata": "1:8.0.6-1~bpo13+1",
+        "suricata-update": "1.3.8-1~bpo13+1"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "candidates.approved",
+      "details": {
+        "rollback_candidate_id": "feb95860-13be-46cc-9f16-d48ec06b1c38",
+        "rollback_pack_id": "dev13-ruleops-v1",
+        "rollback_sha256": "7fe47685206da85b91b59dadaef7885c612a5a670a9384ad9e47115183fda6ee",
+        "success_candidate_id": "aba8ef32-7f17-44de-baae-dc9718515d00",
+        "success_pack_id": "dev13-ruleops-v1",
+        "success_sha256": "2705cda0e02b88413f8872d3d0f0eb16d3910c1ece892ad2715e0dc4fadebd48"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "promotion.committed",
+      "details": {
+        "history_states": [
+          "REQUESTED",
+          "LOCKED",
+          "SNAPSHOTTED",
+          "STAGED",
+          "VALIDATED",
+          "APPLIED",
+          "VERIFIED",
+          "COMMITTED"
+        ],
+        "receipt_files": [
+          "activation.json",
+          "reload-applied.json",
+          "snapshot.json"
+        ],
+        "reload_phases": [
+          "applied"
+        ],
+        "state": "COMMITTED",
+        "transaction_id": "272e2ac0-0cd4-4930-9e4a-af608c22935a"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "rollback.injected",
+      "details": {
+        "history_states": [
+          "REQUESTED",
+          "LOCKED",
+          "SNAPSHOTTED",
+          "STAGED",
+          "VALIDATED",
+          "APPLIED",
+          "ROLLING_BACK",
+          "ROLLED_BACK"
+        ],
+        "receipt_files": [
+          "activation.json",
+          "reload-applied.json",
+          "reload-rollback.json",
+          "rollback.json",
+          "snapshot.json"
+        ],
+        "reload_phases": [
+          "applied",
+          "rollback"
+        ],
+        "state": "ROLLED_BACK",
+        "transaction_id": "fb57d329-a211-46ed-b6e3-5732e1a10272"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "runtime.restored",
+      "details": {
+        "active_sha256": "2705cda0e02b88413f8872d3d0f0eb16d3910c1ece892ad2715e0dc4fadebd48",
+        "controller_audit_events": 16,
+        "health_checks": 15,
+        "health_status": "healthy",
+        "last_known_good_transaction_id": "272e2ac0-0cd4-4930-9e4a-af608c22935a",
+        "privileged_audit_events": 16
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "candidate staging and the reviewed PCAP corpus were provisioned before this bounded qualifier run",
+    "the unsigned Meercata artifact was installed directly in the disposable VM",
+    "only IDS rule activation and rollback were exercised; IPS and NFQUEUE were not",
+    "crash, reboot, disk-full, retention, repository signing, removal, and purge were not exercised"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "os_id": "debian",
+    "pid1": "systemd",
+    "version_id": "13",
+    "virtualization": "kvm"
+  },
+  "project_version": "2.0.0.dev13",
+  "schema_version": 1,
+  "status": "ruleops-vm-qualified"
+}

@@ -1,0 +1,78 @@
+.TH MEERCATA 1 "2026-10-09" "Meercata v2" "User Commands"
+.SH NAME
+meercata \- transactional CLI-only control plane for Suricata
+.SH SYNOPSIS
+.B meercata
+.RI [ options ]
+.RI [ command ]
+.RI [ arguments ]
+.SH DESCRIPTION
+Meercata provides read-only health reporting, transaction inspection, and a
+gated RuleOps development pipeline for Suricata. It has no GUI, web server,
+remote API, or generic command execution interface.
+.PP
+With no command and interactive input/output terminals, Meercata opens its
+numbered terminal menu. The menu remains available without configuration and
+delegates to existing commands. Writes and delivery require confirmation.
+Unmigrated or gated actions are labelled unavailable; the health-event view is
+not the v1 threat-alert evidence viewer. No-argument noninteractive invocation
+prints help and returns 2. NO_COLOR disables banner color.
+.PP
+Production rule promotion and IDS/IPS lifecycle operations remain disabled
+until their documented qualification gates are complete.
+.SH COMMANDS
+.TP
+.B menu
+Open the interactive terminal menu. Requires terminal input and output.
+Use 0 or Enter to go back or quit. Health watch is stopped with Ctrl+C.
+.TP
+.B health
+Collect one health report. Use
+.B --json
+for the versioned machine-readable form or
+.B --watch
+for repeated collection.
+.TP
+.B monitor
+Record and inspect durable health transitions, verify scheduled freshness,
+deliver due transition envelopes, and inspect bounded delivery/dead-letter
+state. The delivery-health subcommand reports backlog, age, retries, and
+failed-delivery pressure. Delivery destinations and credentials are never accepted as CLI
+arguments.
+.TP
+.B paths
+Show fixed production paths.
+.TP
+.B transactions
+List or inspect durable transaction and recovery state.
+.TP
+.B rules
+Inspect, stage, diff, validate, or regress a RuleOps candidate. Promotion is
+gated pending production qualification.
+.SH FILES
+.TP
+.I /etc/meercata/meercata.toml
+Root-owned active configuration. The package installs an example only and
+never creates or overwrites this file.
+.TP
+.I /var/lib/meercata
+Controller state, transactions, candidates, privileged recovery receipts, and
+the bounded monitor delivery outbox/dead letters.
+.TP
+.I /var/log/meercata
+Controller and privileged audit records.
+.SH EXIT STATUS
+Health and monitor delivery-health return 0 for healthy, 1 for degraded, 2 for critical, and 3 for an
+unknown or configuration error. Monitor freshness returns 0 fresh, 2 stale,
+and 3 unknown/uninitialized. Delivery returns 2 when an envelope enters the
+dead-letter set. Other commands document their machine output and failure
+status in the installed operating contracts.
+.SH SECURITY
+Privileged operations are restricted to fixed helper operation identifiers.
+The CLI accepts no arbitrary executable, shell command, service name, socket
+command, or destination path for privileged execution.
+.SH DOCUMENTATION
+See the operating contracts under
+.IR /usr/share/doc/meercata/ .
+.SH AUTHORS
+Meercata maintainers.

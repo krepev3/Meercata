@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "pack_id": "dev13-ruleops-v1",
+  "description": "Original synthetic UDP fixture for the disposable-VM RuleOps activation and rollback qualification.",
+  "cases": [
+    {
+      "case_id": "qualification-alert",
+      "pcap_file": "qualification.pcap",
+      "pcap_sha256": "8a81ad9f010fa548aed62fcdec80ccf2a48e59162479885188079a3029d8086b",
+      "expected_alerts": [
+        {
+          "gid": 1,
+          "sid": 9900013,
+          "minimum": 1,
+          "maximum": 1
+        }
+      ],
+      "forbidden_alerts": []
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/monitor-v1.schema.json",
+  "title": "Meercata monitor observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_utc",
+    "status",
+    "exit_code",
+    "transition_emitted",
+    "sequence",
+    "transition",
+    "state",
+    "health"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "status": { "enum": ["healthy", "degraded", "critical", "unknown"] },
+    "exit_code": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "transition_emitted": { "type": "boolean" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "transition": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "event",
+            "sequence",
+            "reason",
+            "generated_utc",
+            "generated_local",
+            "previous",
+            "current",
+            "affected_checks",
+            "health_report_sha256",
+            "state_after"
+          ]
+        }
+      ]
+    },
+    "state": { "$ref": "#/$defs/state" },
+    "health": {
+      "type": "object",
+      "required": ["schema_version", "status", "exit_code", "checks"]
+    }
+  },
+  "$defs": {
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "sequence",
+        "mode",
+        "status",
+        "exit_code",
+        "fingerprint",
+        "opened_utc",
+        "last_transition_utc",
+        "last_observed_utc",
+        "consecutive_observations",
+        "health_report_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "mode": { "enum": ["ids", "ips", "unknown"] },
+        "status": { "enum": ["healthy", "degraded", "critical", "unknown"] },
+        "exit_code": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "opened_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "last_transition_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "last_observed_utc": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "consecutive_observations": { "type": "integer", "minimum": 1 },
+        "health_report_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

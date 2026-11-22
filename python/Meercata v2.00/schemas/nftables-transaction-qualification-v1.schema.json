@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/nftables-transaction-qualification-v1.schema.json",
+  "title": "Meercata transactional nftables qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "project_version", "platform", "checks", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "nftables-transaction-qualified" },
+    "project_version": { "const": "2.0.0.dev18" },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_id", "version_id", "architecture", "image_digest", "effective_uid",
+        "effective_gid", "interfaces", "ipv4_routes", "network_namespace"
+      ],
+      "properties": {
+        "os_id": { "const": "debian" },
+        "version_id": { "const": "13" },
+        "architecture": { "const": "x86_64" },
+        "image_digest": {
+          "const": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258"
+        },
+        "effective_uid": { "const": 0 },
+        "effective_gid": { "const": 0 },
+        "interfaces": { "const": ["lo"] },
+        "ipv4_routes": { "const": 0 },
+        "network_namespace": {
+          "type": "string",
+          "pattern": "^net:\\[[0-9]+\\]$",
+          "maxLength": 64
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "platform.namespace",
+              "transaction.commit",
+              "transaction.forced-rollback",
+              "receipts.root-private",
+              "emergency.bypass",
+              "audit.dual-stream",
+              "isolation.unrelated-preserved"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": { "type": "object", "minProperties": 1, "maxProperties": 12 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "check_id": "package.manifest",
+      "details": {
+        "directories": 12,
+        "files": 157
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "python.imports",
+      "details": {
+        "modules": 7,
+        "version": "2.0.0.dev24"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "sudoers.syntax",
+      "details": {},
+      "status": "passed"
+    },
+    {
+      "check_id": "systemd.units",
+      "details": {
+        "verified_units": 15
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "sysusers.materialize",
+      "details": {
+        "operator_group": "meercata-operators",
+        "operator_membership": false,
+        "service_user": "meercata"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "tmpfiles.dry-run",
+      "details": {
+        "managed_directories": 12
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "root ownership and tmpfiles chown were not applied in this unprivileged qualification",
+    "live Suricata readiness, socket, reload, traffic, restart, and reboot behavior were not exercised",
+    "native package signature, install, upgrade, downgrade, removal, and purge were not exercised"
+  ],
+  "package": "meercata",
+  "schema_version": 1,
+  "status": "staged-qualified",
+  "version": "2.0.0.dev24"
+}

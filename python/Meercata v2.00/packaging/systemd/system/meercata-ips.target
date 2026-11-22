@@ -1,0 +1,10 @@
+[Unit]
+Description=Private Meercata fail-open IPS lifecycle
+Documentation=file:/usr/share/doc/meercata/IPS-SYSTEMD.md
+Requires=meercata-suricata-ips.service meercata-ips-activate.service
+Wants=meercata-ips-guard.service
+After=meercata-suricata-ips.service meercata-ips-activate.service meercata-ips-guard.service
+Conflicts=suricata.service
+
+[Install]
+WantedBy=multi-user.target

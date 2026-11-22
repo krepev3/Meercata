@@ -1,0 +1,14 @@
+[Unit]
+Description=Deliver Meercata monitor transitions every minute
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1min
+AccuracySec=10s
+RandomizedDelaySec=10s
+Persistent=true
+Unit=meercata-monitor-delivery.service
+
+[Install]
+WantedBy=timers.target
+Also=meercata-monitor-delivery-health.timer

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/recovery-vm-qualification-v1.schema.json",
+  "title": "Meercata crash and reboot recovery VM qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "platform",
+    "checks",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "recovery-vm-qualified" },
+    "project_version": { "const": "2.0.0.dev16" },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_id",
+        "version_id",
+        "architecture",
+        "pid1",
+        "virtualization",
+        "cloud_image_sha512",
+        "effective_uid",
+        "effective_gid"
+      ],
+      "properties": {
+        "os_id": { "const": "debian" },
+        "version_id": { "const": "13" },
+        "architecture": { "const": "x86_64" },
+        "pid1": { "const": "systemd" },
+        "virtualization": { "enum": ["kvm", "qemu"] },
+        "cloud_image_sha512": {
+          "const": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc"
+        },
+        "effective_uid": { "const": 0 },
+        "effective_gid": { "const": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "platform.vm",
+              "packages.installed",
+              "supervision.policy",
+              "crash.auto-restart",
+              "crash.start-limit",
+              "recovery.manual",
+              "reboot.boot-changed",
+              "reboot.services",
+              "health.after-reboot",
+              "protected.integrity"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 20
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

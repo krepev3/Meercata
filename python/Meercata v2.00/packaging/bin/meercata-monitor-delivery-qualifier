@@ -1,0 +1,9 @@
+#!/usr/bin/python3
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, "/usr/lib/meercata/python")
+
+from meercata.monitor_delivery_qualifier import main
+
+raise SystemExit(main())

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/ips-systemd-vm-qualification-v1.schema.json",
+  "title": "Meercata private IPS systemd VM qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "platform",
+    "checks",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "ips-systemd-vm-qualified" },
+    "project_version": { "const": "2.0.0.dev21" },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_id",
+        "version_id",
+        "architecture",
+        "pid1",
+        "virtualization",
+        "cloud_image_sha512",
+        "effective_uid",
+        "effective_gid"
+      ],
+      "properties": {
+        "os_id": { "const": "debian" },
+        "version_id": { "const": "13" },
+        "architecture": { "const": "x86_64" },
+        "pid1": { "const": "systemd" },
+        "virtualization": { "enum": ["kvm", "qemu"] },
+        "cloud_image_sha512": {
+          "const": "77429b411b39b43f914dc9d14bf34aa315489a1a12b5429f72e5b483bdda23c65698d33443c85d3f3ad7c3a0828ae60845406d6b99646342554d17abae29c2a3"
+        },
+        "effective_uid": { "const": 0 },
+        "effective_gid": { "const": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "details"],
+        "properties": {
+          "check_id": {
+            "enum": [
+              "platform.vm",
+              "packages.installed",
+              "lifecycle.initial",
+              "failure.guard",
+              "lifecycle.rearmed",
+              "failure.engine",
+              "lifecycle.stop",
+              "reboot.recovered",
+              "health.ips",
+              "protected.integrity",
+              "cleanup.fail-open"
+            ]
+          },
+          "status": { "const": "passed" },
+          "details": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 20
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    }
+  }
+}

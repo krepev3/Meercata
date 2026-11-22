@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    remove)
+        exec /usr/lib/meercata/bin/meercata-package-lifecycle prerm-remove
+        ;;
+    upgrade|deconfigure|failed-upgrade)
+        ;;
+    *)
+        echo "meercata prerm: unsupported lifecycle action" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

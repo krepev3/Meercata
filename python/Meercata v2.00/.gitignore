@@ -1,0 +1,20 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp*/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Local credentials and agent settings
+.env
+.env.*
+.aws/
+.ssh/
+.codex/
+.agents/
+meercata_key
+meercata_key.pub

@@ -1,0 +1,162 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.vm",
+      "details": {
+        "architecture": "x86_64",
+        "cloud_image_sha512": "77429b411b39b43f914dc9d14bf34aa315489a1a12b5429f72e5b483bdda23c65698d33443c85d3f3ad7c3a0828ae60845406d6b99646342554d17abae29c2a3",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "os_id": "debian",
+        "pid1": "systemd",
+        "version_id": "13",
+        "virtualization": "kvm"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "packages.installed",
+      "details": {
+        "meercata": "2.0.0~dev21-1",
+        "suricata": "1:8.0.6-1~bpo13+1",
+        "suricata-update": "1.3.8-1~bpo13+1"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "lifecycle.initial",
+      "details": {
+        "engine_pid": 12161,
+        "guard_pid": 12207,
+        "queue": 42,
+        "queue_dropped": 0,
+        "semantic_sha256": "6c5af2e70fd89496a625aa1ca38c6b23322f1670f483a89fbc6ac84869395066",
+        "target_active": true,
+        "transaction_id": "44ab59ee-a225-4e67-99f2-0009058f62db",
+        "user_dropped": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "failure.guard",
+      "details": {
+        "before_transaction_id": "44ab59ee-a225-4e67-99f2-0009058f62db",
+        "fail_open": true,
+        "listener_present_after": true,
+        "policy_active_after": false,
+        "signal": "SIGKILL",
+        "unit": "meercata-ips-guard.service"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "lifecycle.rearmed",
+      "details": {
+        "engine_pid": 12345,
+        "guard_pid": 12392,
+        "queue": 42,
+        "queue_dropped": 0,
+        "semantic_sha256": "988d2e7954cfdcdb7c8e35ddea9913e02af938f6809b175cba45b49f3d677b43",
+        "target_active": true,
+        "transaction_id": "3f3db173-8cc0-426f-979f-e9616c7c8588",
+        "user_dropped": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "failure.engine",
+      "details": {
+        "before_transaction_id": "3f3db173-8cc0-426f-979f-e9616c7c8588",
+        "fail_open": true,
+        "listener_present_after": false,
+        "policy_active_after": false,
+        "signal": "SIGKILL",
+        "unit": "meercata-suricata-ips.service"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "lifecycle.stop",
+      "details": {
+        "activation_active": false,
+        "engine_active": false,
+        "fail_open": true,
+        "guard_active": false,
+        "listener_present": false,
+        "policy_active": false
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "reboot.recovered",
+      "details": {
+        "after_boot_id": "77f7266d-ec2d-43c2-adf0-0612ba93166b",
+        "before_boot_id": "47acab90-c584-4a80-b8c5-b331dd114ccd",
+        "engine_pid": 706,
+        "guard_pid": 779,
+        "queue": 42,
+        "queue_dropped": 0,
+        "semantic_sha256": "c7adb8bb2f833b98a2d0f757414536bd910e1dfa74b8565777e6fea657d2575c",
+        "target_active": true,
+        "transaction_id": "90016341-07a7-43f0-b031-49548f5d28aa",
+        "user_dropped": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.ips",
+      "details": {
+        "checks": 17,
+        "mode": "ips",
+        "status": "healthy"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "protected.integrity",
+      "details": {
+        "files": {
+          "/etc/meercata/meercata.toml": "53b8e38bee61ba520b436e4e5b91866b13e4295e65ab40ed290c3ea490dcdc2e",
+          "/etc/suricata/suricata.yaml": "ec9a15e129f25f5d6d279f0e34aeb6e9eb62d4b5022ec9e33ee26395038a7a34",
+          "/usr/lib/meercata/package-manifest.json": "08dc2dac236cbd4a0f81ea700fc7cbb4d8748c72029fd59b817feec95204b804",
+          "/usr/lib/systemd/system/meercata-ips-activate.service": "cf970f54caa7aaeb5c56b233d34b9a45c1af7efe26b17742db4b789f80b5e433",
+          "/usr/lib/systemd/system/meercata-ips-guard.service": "3127eac004fa624e6f5ceacb379d1dc21df8fa3f69b5329e2bfda1aadc1fc3ae",
+          "/usr/lib/systemd/system/meercata-ips.target": "12ca3a1d75987cb6df95d0d62c7042cb8eeec0634a9fc149712b149fc14eb821",
+          "/usr/lib/systemd/system/meercata-suricata-ips.service": "20c8d14cc1a5b9558bd321f9820750acf20be0827afa077f49630a86dcacdc92"
+        }
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "cleanup.fail-open",
+      "details": {
+        "activation_active": false,
+        "engine_active": false,
+        "fail_open": true,
+        "guard_active": false,
+        "listener_present": false,
+        "policy_active": false
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the unsigned artifact was installed only in a disposable qualification VM",
+    "bounded guard and engine SIGKILL failures were exercised; kernel panic and power loss were not",
+    "Dev20 separately qualifies measured NFQUEUE goodput, controlled overload, and listener-loss traffic continuity",
+    "HA failover, hardware bypass, disk exhaustion, and long-duration soak remain outside this gate"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "cloud_image_sha512": "77429b411b39b43f914dc9d14bf34aa315489a1a12b5429f72e5b483bdda23c65698d33443c85d3f3ad7c3a0828ae60845406d6b99646342554d17abae29c2a3",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "os_id": "debian",
+    "pid1": "systemd",
+    "version_id": "13",
+    "virtualization": "kvm"
+  },
+  "project_version": "2.0.0.dev21",
+  "schema_version": 1,
+  "status": "ips-systemd-vm-qualified"
+}

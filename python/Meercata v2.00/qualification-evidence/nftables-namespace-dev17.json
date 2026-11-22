@@ -1,0 +1,101 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.namespace",
+      "details": {
+        "architecture": "x86_64",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "interfaces": [
+          "lo"
+        ],
+        "ipv4_routes": 0,
+        "network_namespace": "net:[4026532807]",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "ownership.foreign-rejected",
+      "details": {
+        "unowned_table_rejected": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.syntax",
+      "details": {
+        "nft_version": "nftables v1.1.3 (Commodore Bullmoose #4)",
+        "script_sha256": "931e9190f748ab55509e6d3c422f615d6cb4b1d603a9fdf4c6be61dabc881231"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.initial-apply",
+      "details": {
+        "fail_open": true,
+        "semantic_sha256": "850754a0e1c3e6ee6e15d91ba916db176e1f09fc36e43ede4b240ec16b21af7b",
+        "transaction_id": "a0000000-0000-0000-0000-000000000017"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.atomic-replace",
+      "details": {
+        "previous_transaction_id": "a0000000-0000-0000-0000-000000000017",
+        "semantic_sha256": "1b6f7508570e0eb2ea9eb7f8886826b58b62a671c06a4d90cf8c0fcfaa95049f",
+        "transaction_id": "b0000000-0000-0000-0000-000000000017"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "ownership.drift-rejected",
+      "details": {
+        "unexpected_rule_rejected": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.remove-isolated",
+      "details": {
+        "meercata_table_removed": true,
+        "unrelated_semantic_sha256": "207646f1ec3e1bec65a2f60e43e71d81a2903bd85beb905041cac3fa32f31bbc",
+        "unrelated_table_preserved": true
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the run used a disposable container network namespace and did not alter the host network namespace",
+    "Suricata and a userspace NFQUEUE listener were not started, so packet verdict correctness was not exercised",
+    "listener-loss connectivity, queue overload, throughput, and latency remain unqualified",
+    "the privileged transaction helper, service lifecycle, reboot recovery, and public IPS CLI remain gated"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "interfaces": [
+      "lo"
+    ],
+    "ipv4_routes": 0,
+    "network_namespace": "net:[4026532807]",
+    "os_id": "debian",
+    "version_id": "13"
+  },
+  "policy": {
+    "chain": "forward",
+    "fail_policy": "open",
+    "family": "inet",
+    "interface": "eth0",
+    "priority": 10,
+    "queue": 42,
+    "table": "meercata",
+    "traffic_scope": "gateway-forward"
+  },
+  "schema_version": 1,
+  "status": "nftables-namespace-qualified"
+}

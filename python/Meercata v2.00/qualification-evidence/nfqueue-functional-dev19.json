@@ -1,0 +1,161 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.namespace",
+      "details": {
+        "architecture": "x86_64",
+        "capabilities": [
+          "CAP_NET_ADMIN",
+          "CAP_SYS_ADMIN"
+        ],
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "interfaces": [
+          "lo"
+        ],
+        "ipv4_routes": 0,
+        "isolation_profile": "network-none with IPv4 forwarding, NET_ADMIN, SYS_ADMIN, seccomp-unconfined, apparmor-unconfined",
+        "kernel_nfqueue_backend": "available-before-run",
+        "network_namespace": "net:[4026532806]",
+        "os_id": "debian",
+        "version_id": "13"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "topology.routed",
+      "details": {
+        "baseline_bytes": 1048576,
+        "baseline_sha256": "e335c89377c278eabfd5fca137165ad28743965b5739a6ef708817e9a0e5f48b",
+        "client": "10.77.0.2/24",
+        "gateway_interfaces": [
+          "lan0",
+          "wan0"
+        ],
+        "server": "10.88.0.2/24"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "suricata.nfq-capability",
+      "details": {
+        "exclusive_rule_sid": 9900019,
+        "nfqueue_support": true,
+        "version": "Suricata version 8.0.6 RELEASE"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "policy.transaction-commit",
+      "details": {
+        "fail_open": true,
+        "interface": "lan0",
+        "queue": 42,
+        "semantic_sha256": "58f4b7f64f1b193ca4a9485f90d1da82753735dc2eaa94544b1d6763118cbd0d",
+        "transaction_id": "01946db3-97dc-449a-b088-202552f91717"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "nfqueue.listener",
+      "details": {
+        "copy_mode": 2,
+        "copy_range": 65531,
+        "port_id": 87,
+        "queue": 42,
+        "queue_dropped": 0,
+        "queue_total": 0,
+        "user_dropped": 0
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "verdict.accept",
+      "details": {
+        "bytes": 1048576,
+        "duration_ms": 37.64,
+        "port": 8080,
+        "queued_packets_after": 453,
+        "queued_packets_before": 0,
+        "sha256": "e335c89377c278eabfd5fca137165ad28743965b5739a6ef708817e9a0e5f48b"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "verdict.drop",
+      "details": {
+        "alert_action": "blocked",
+        "port": 9090,
+        "probe_duration_ms": 2017.862,
+        "probe_error_type": "URLError",
+        "queued_packets_after": 455,
+        "queued_packets_before": 453,
+        "sid": 9900019
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "performance.bounded-sample",
+      "details": {
+        "aggregate_throughput_mbps": 197.75,
+        "bytes_per_sample": 1048576,
+        "classification": "bounded-functional-sample-not-capacity",
+        "latency_max_ms": 44.485,
+        "latency_median_ms": 42.277,
+        "latency_min_ms": 39.988,
+        "samples": 5
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "fail-open.listener-loss",
+      "details": {
+        "bytes": 1048576,
+        "duration_ms": 21.753,
+        "formerly_blocked_port": 9090,
+        "listener_present": false,
+        "queued_packets_after": 3213,
+        "queued_packets_before": 455,
+        "sha256": "e335c89377c278eabfd5fca137165ad28743965b5739a6ef708817e9a0e5f48b"
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the run mutated networking and nftables only inside a disposable container",
+    "the bounded transfer and latency sample is functional evidence, not a production capacity benchmark",
+    "NFQUEUE overload, sustained soak, packet loss under load, multi-queue scaling, and resource ceilings remain unqualified",
+    "public IPS CLI activation, systemd lifecycle, crash, reboot, and physical inline deployment remain gated"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "capabilities": [
+      "CAP_NET_ADMIN",
+      "CAP_SYS_ADMIN"
+    ],
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "interfaces": [
+      "lo"
+    ],
+    "ipv4_routes": 0,
+    "isolation_profile": "network-none with IPv4 forwarding, NET_ADMIN, SYS_ADMIN, seccomp-unconfined, apparmor-unconfined",
+    "kernel_nfqueue_backend": "available-before-run",
+    "network_namespace": "net:[4026532806]",
+    "os_id": "debian",
+    "version_id": "13"
+  },
+  "project_version": "2.0.0.dev19",
+  "schema_version": 1,
+  "status": "nfqueue-functional-qualified",
+  "topology": {
+    "client_namespace": "meercata-client",
+    "fail_policy": "open",
+    "gateway_interface": "lan0",
+    "queue": 42,
+    "server_namespace": "meercata-server",
+    "traffic_path": "client -> Meercata gateway -> server"
+  }
+}

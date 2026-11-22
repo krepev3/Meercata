@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    configure)
+        exec /usr/lib/meercata/bin/meercata-package-lifecycle postinst-configure
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "meercata postinst: unsupported lifecycle action" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

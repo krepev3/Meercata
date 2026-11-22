@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.local/schemas/regression-pack-v1.schema.json",
+  "title": "Meercata PCAP Regression Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pack_id", "description", "cases"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "description": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gid", "sid"],
+      "properties": {
+        "gid": { "type": "integer", "minimum": 1 },
+        "sid": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gid", "sid"],
+      "properties": {
+        "gid": { "type": "integer", "minimum": 1 },
+        "sid": { "type": "integer", "minimum": 1 },
+        "minimum": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "maximum": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "pcap_file",
+        "pcap_sha256",
+        "expected_alerts",
+        "forbidden_alerts"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "pcap_file": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\.pcap(ng)?$"
+        },
+        "pcap_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "expected_alerts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expectation" }
+        },
+        "forbidden_alerts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identity" }
+        }
+      }
+    }
+  }
+}

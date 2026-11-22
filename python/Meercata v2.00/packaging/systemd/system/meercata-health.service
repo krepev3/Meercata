@@ -1,0 +1,32 @@
+[Unit]
+Description=Meercata read-only Suricata health check
+Documentation=file:/usr/share/doc/meercata/HEALTH.md
+After=suricata.service meercata-suricata-ips.service
+
+[Service]
+Type=oneshot
+User=meercata
+Group=meercata
+ExecStart=/usr/bin/meercata health --json
+UMask=0077
+TimeoutStartSec=30s
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+# The CLI invokes exactly one sudoers-allowlisted, read-only helper for the
+# root-owned Suricata socket and query the owned nftables table. Retain only
+# its identity, read-access, audit, and netlink-query capabilities.
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_NET_ADMIN
+
+# No [Install] section: the timer is the supported activation path.

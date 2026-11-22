@@ -1,0 +1,13 @@
+[Unit]
+Description=Verify Meercata monitor freshness every minute
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=1min
+AccuracySec=10s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=meercata-monitor-freshness.service
+
+[Install]
+WantedBy=timers.target

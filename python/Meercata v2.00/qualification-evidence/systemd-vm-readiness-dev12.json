@@ -1,0 +1,90 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.vm",
+      "details": {
+        "architecture": "x86_64",
+        "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "os_id": "debian",
+        "pid1": "systemd",
+        "version_id": "13",
+        "virtualization": "kvm"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "packages.installed",
+      "details": {
+        "meercata": "2.0.0~dev12-1",
+        "suricata": "1:8.0.6-1~bpo13+1",
+        "suricata-update": "1.3.8-1~bpo13+1"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "suricata.readiness",
+      "details": {
+        "active_state": "active",
+        "drop_in": "/usr/lib/systemd/system/suricata.service.d/50-meercata-production.conf",
+        "exec_main_status": 0,
+        "main_pid": 1953,
+        "restart_count": 0,
+        "result": "success",
+        "socket_path": "/run/suricata/suricata-command.socket",
+        "socket_root_owned": true,
+        "socket_world_writable": false,
+        "sub_state": "running",
+        "type": "notify"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.cli",
+      "details": {
+        "capture_interface": ["enp0s2"],
+        "capture_mode": "AF_PACKET_DEV",
+        "checks": 15,
+        "exit_code": 0,
+        "healthy_checks": 15,
+        "mode": "ids",
+        "socket_version": "8.0.6 RELEASE",
+        "status": "healthy"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "health.systemd",
+      "details": {
+        "interval": "1min",
+        "on_boot": "2min",
+        "oneshot_exit_status": 0,
+        "oneshot_result": "success",
+        "service_user": "meercata",
+        "timer_active": true,
+        "timer_sub_state": "waiting"
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "the unsigned Meercata artifact was copied into the disposable VM and installed directly with dpkg",
+    "only IDS AF_PACKET traffic and read-only socket commands were exercised; IPS and NFQUEUE were not",
+    "rule activation, live reload, failure rollback, and transaction recovery were not exercised",
+    "Suricata crash throttling, enabled-timer reboot persistence, package removal, and reboot recovery were not exercised"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "cloud_image_sha512": "0ce1f1d675733027d3e17a4665cb95e1d7173bdf67fb8a87ff822ff5ee025bc2a90ecb270465ef395755e41c868b40072eb9ac493810196d9cf68f941afb93dc",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "os_id": "debian",
+    "pid1": "systemd",
+    "version_id": "13",
+    "virtualization": "kvm"
+  },
+  "project_version": "2.0.0.dev12",
+  "schema_version": 1,
+  "status": "systemd-vm-readiness-qualified"
+}

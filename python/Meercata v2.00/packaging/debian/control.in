@@ -1,0 +1,12 @@
+Package: meercata
+Version: @DEBIAN_VERSION@
+Architecture: all
+Maintainer: Meercata Maintainers <meercata-maintainers@users.noreply.github.com>
+Installed-Size: @INSTALLED_SIZE@
+Depends: python3 (>= 3.11), sudo, systemd, logrotate, nftables, suricata (>= 8.0), suricata-update (>= 1.3.8)
+Section: admin
+Priority: optional
+Description: transactional CLI-only control plane for Suricata
+ Meercata provides health, rule qualification, transaction, rollback,
+ and narrowly scoped privileged-operation foundations for Suricata.
+ This development package remains gated from live production promotion.

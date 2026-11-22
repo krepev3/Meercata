@@ -1,0 +1,21 @@
+{
+  "architecture": "all",
+  "artifact": "meercata_2.0.0~dev23-1_all.deb",
+  "debian_version": "2.0.0~dev23-1",
+  "payload_directories": 12,
+  "payload_files": 152,
+  "project_version": "2.0.0.dev23",
+  "schema_version": 1,
+  "sha256": "6982f9d63533fe9b012d61737a9f699abd6ebee40de9683fa542bd55ea022fce",
+  "size_bytes": 187952,
+  "status": "built-and-verified",
+  "verification": {
+    "active_configuration_included": false,
+    "architecture": "all",
+    "maintainer_scripts": 4,
+    "manifest_files": 152,
+    "package": "meercata",
+    "root_owned_archive_entries": true,
+    "version": "2.0.0~dev23-1"
+  }
+}

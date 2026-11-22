@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "status": "apt-repository-qualified",
+  "project_version": "2.0.0.dev15",
+  "platform": {
+    "os_id": "debian",
+    "version_id": "13",
+    "architecture": "x86_64",
+    "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+    "effective_uid": 0,
+    "effective_gid": 0
+  },
+  "checks": [
+    {
+      "check_id": "platform.container",
+      "status": "passed",
+      "details": {
+        "os_id": "debian",
+        "version_id": "13",
+        "architecture": "x86_64",
+        "image_digest": "sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258",
+        "effective_uid": 0,
+        "effective_gid": 0,
+        "network": "none",
+        "interfaces": ["lo"]
+      }
+    },
+    {
+      "check_id": "dependencies.preinstalled",
+      "status": "passed",
+      "details": {
+        "python3": "3.13.5-1",
+        "sudo": "1.9.16p2-3+deb13u2",
+        "suricata": "1:8.0.6-1~bpo13+1",
+        "suricata-update": "1.3.8-1~bpo13+1",
+        "systemd": "257.13-1~deb13u1"
+      }
+    },
+    {
+      "check_id": "signing.ephemeral-key",
+      "status": "passed",
+      "details": {
+        "identity": "Meercata Qualification Repository <qualification@meercata.invalid>",
+        "fingerprint": "717A019D99084226C7C761C3B7E8B79061A5CBA5",
+        "algorithm": "rsa3072",
+        "expires_after": "8d",
+        "production_key": false
+      }
+    },
+    {
+      "check_id": "repository.metadata",
+      "status": "passed",
+      "details": {
+        "revisions": [
+          {
+            "debian_version": "2.0.0~dev15-1",
+            "artifact_sha256": "712e7da0065bc2941756429339b90196a7648365bf84abb4510e6faddb041828",
+            "artifact_size": 124564,
+            "packages_sha256": "49ac8b32ab701eb04d024b9f413d57f8e84e4ffc1fc789510d955c89dc8c6a86",
+            "packages_gz_sha256": "b09ecd6046308430ec64bb2636e429fb673adc10f17f0b2795c56fe429bb6fba",
+            "release_sha256": "83eee7fab1e55d07a624975c116ee423ef1c6965dd90408265c1eb1c51dae46f",
+            "inrelease_sha256": "5f4552b1f3bd18d0c3e7358d98e51d4dd6c877e12ba984200efdab7dc5e7398b"
+          },
+          {
+            "debian_version": "2.0.0~dev15-2",
+            "artifact_sha256": "aa1810f3d91eaec4ac1dd95b0b1fa84e948ec58f9871228057708b9bf2a56be5",
+            "artifact_size": 124564,
+            "packages_sha256": "ea4123e5d1b5514801c4ed3dcc3ac2e08d1f9fac21c626f33266f72eb102d995",
+            "packages_gz_sha256": "6d1fd8565bfd00471251aa63ca20776487451c0103e7a2f32bff109d27d37727",
+            "release_sha256": "8d504e008f6357276b3ee099344ee6860cd16880add2e4d9820c05916096bf2a",
+            "inrelease_sha256": "8b672197c999f733ee10f03fb4e4bc181e0037f46e2c4d54939693ec144bacee"
+          }
+        ]
+      }
+    },
+    {
+      "check_id": "trust.unpinned-key-rejected",
+      "status": "passed",
+      "details": {
+        "exit_code": 100,
+        "trusted_override": false
+      }
+    },
+    {
+      "check_id": "trust.signature-tamper-rejected",
+      "status": "passed",
+      "details": {
+        "exit_code": 100,
+        "tampered_metadata_accepted": false
+      }
+    },
+    {
+      "check_id": "trust.package-tamper-rejected",
+      "status": "passed",
+      "details": {
+        "exit_code": 100,
+        "tampered_package_installed": false
+      }
+    },
+    {
+      "check_id": "apt.install",
+      "status": "passed",
+      "details": {
+        "debian_version": "2.0.0~dev15-1",
+        "artifact_sha256": "712e7da0065bc2941756429339b90196a7648365bf84abb4510e6faddb041828",
+        "authenticated": true,
+        "signed_by_pinned_key": true,
+        "fingerprint": "717A019D99084226C7C761C3B7E8B79061A5CBA5",
+        "dependencies_ignored": false,
+        "allow_unauthenticated": false,
+        "repository_uri_scheme": "file"
+      }
+    },
+    {
+      "check_id": "apt.upgrade",
+      "status": "passed",
+      "details": {
+        "debian_version": "2.0.0~dev15-2",
+        "artifact_sha256": "aa1810f3d91eaec4ac1dd95b0b1fa84e948ec58f9871228057708b9bf2a56be5",
+        "from": "2.0.0~dev15-1",
+        "to": "2.0.0~dev15-2",
+        "dependencies_ignored": false,
+        "allow_unauthenticated": false,
+        "repository_uri_scheme": "file"
+      }
+    },
+    {
+      "check_id": "apt.remove",
+      "status": "passed",
+      "details": {
+        "dpkg_status": "config-files",
+        "protected_data_removed": false
+      }
+    }
+  ],
+  "limitations": [
+    "an ephemeral qualification-only signing key was destroyed with the container; production key custody and rotation were not qualified",
+    "the repository used a network-isolated local file URI; HTTPS transport, mirrors, CDN delivery, and availability were not exercised",
+    "Debian and Suricata dependencies were authenticated and preinstalled before the network-isolated Meercata repository run",
+    "systemd was not PID 1; service startup, crash/reboot recovery, IPS/NFQUEUE, retention, and purge were not exercised"
+  ]
+}

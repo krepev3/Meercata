@@ -1,0 +1,48 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    install)
+        for target in \
+            /etc/sudoers.d/meercata \
+            /usr/bin/meercata \
+            /usr/lib/meercata \
+            /usr/lib/sysusers.d/meercata.conf \
+            /usr/lib/tmpfiles.d/meercata.conf \
+            /usr/lib/systemd/system/meercata-health.service \
+            /usr/lib/systemd/system/meercata-health.timer \
+            /usr/lib/systemd/system/meercata-monitor.service \
+            /usr/lib/systemd/system/meercata-monitor.timer \
+            /usr/lib/systemd/system/meercata-monitor-freshness.service \
+            /usr/lib/systemd/system/meercata-monitor-freshness.timer \
+            /usr/lib/systemd/system/meercata-monitor-delivery.service \
+            /usr/lib/systemd/system/meercata-monitor-delivery.timer \
+            /usr/lib/systemd/system/meercata-monitor-delivery-health.service \
+            /usr/lib/systemd/system/meercata-monitor-delivery-health.timer \
+            /usr/lib/systemd/system/meercata-suricata-ips.service \
+            /usr/lib/systemd/system/meercata-ips-activate.service \
+            /usr/lib/systemd/system/meercata-ips-guard.service \
+            /usr/lib/systemd/system/meercata-ips.target \
+            /etc/logrotate.d/meercata-monitor \
+            /usr/lib/systemd/system/suricata.service.d/50-meercata-production.conf \
+            /usr/share/meercata \
+            /usr/share/doc/meercata
+        do
+            if [ -e "$target" ] || [ -L "$target" ]; then
+                echo "meercata preinst: unowned destination exists: $target" >&2
+                exit 1
+            fi
+        done
+        ;;
+    upgrade)
+        exec /usr/lib/meercata/bin/meercata-package-lifecycle preinst-upgrade
+        ;;
+    abort-upgrade)
+        ;;
+    *)
+        echo "meercata preinst: unsupported lifecycle action" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

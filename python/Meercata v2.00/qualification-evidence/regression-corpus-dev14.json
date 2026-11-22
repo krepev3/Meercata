@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "regression-corpus-qualified",
+  "project_version": "2.0.0.dev14",
+  "pack_id": "production-baseline-v1",
+  "pack_manifest_sha256": "f72b5890cc06aaf986219d0c40b7b9f656ca18eac660dbe3157b09f940bab2cc",
+  "source": {
+    "ruleset_sha256": "4ddb3e3e443306f49bf8d5ab9419a696a05455b1056b3f55e546ddb91d398a4e",
+    "ruleset_size_bytes": 45169550,
+    "active_rules": 52322,
+    "disabled_rules": 15941,
+    "suricata_version": "8.0.6 RELEASE",
+    "suricata_update_version": "1.3.8"
+  },
+  "cases": [
+    {
+      "case_id": "dns-scan-positive",
+      "pcap_sha256": "c9f72b21b6150c6b8c7f4f8aeeb34e0f86eb3af346ac714df84b6c35da2f58e8",
+      "status": "passed",
+      "total_alerts": 1,
+      "observed_relevant_alerts": [
+        { "gid": 1, "sid": 2032091, "count": 1 }
+      ]
+    },
+    {
+      "case_id": "http-exploit-positive",
+      "pcap_sha256": "c6435f59186b3ded542c82c8507a0b11fd31dd4e126659362a8455ef3c1dc941",
+      "status": "passed",
+      "total_alerts": 1,
+      "observed_relevant_alerts": [
+        { "gid": 1, "sid": 2031459, "count": 1 }
+      ]
+    },
+    {
+      "case_id": "tcp-response-positive",
+      "pcap_sha256": "fc99d8ff5e41b4b70ab1e6840f8a585eb17340b443f9cb6ecf30f7bbef33a46d",
+      "status": "passed",
+      "total_alerts": 1,
+      "observed_relevant_alerts": [
+        { "gid": 1, "sid": 2100498, "count": 1 }
+      ]
+    },
+    {
+      "case_id": "udp-remote-positive",
+      "pcap_sha256": "926c845ec12c7ec8bb0cfd7625616ac095fc757c097166fe9ba1fa39e91eb88b",
+      "status": "passed",
+      "total_alerts": 1,
+      "observed_relevant_alerts": [
+        { "gid": 1, "sid": 2001597, "count": 1 }
+      ]
+    },
+    {
+      "case_id": "dns-benign",
+      "pcap_sha256": "eb18fbc2d9f28c9e8c7d31f8bef72af2824cbf3a1aae28cd93ae907766a762a7",
+      "status": "passed",
+      "total_alerts": 0,
+      "observed_relevant_alerts": []
+    },
+    {
+      "case_id": "http-benign",
+      "pcap_sha256": "c776fb395609c46770bf53c06b0557316671156ba3565da6257f6835052ce44a",
+      "status": "passed",
+      "total_alerts": 0,
+      "observed_relevant_alerts": []
+    },
+    {
+      "case_id": "tls-benign",
+      "pcap_sha256": "7ab1194ce26f768d9a41643fc254775d2788e413465743f22ca4331f20cf32f2",
+      "status": "passed",
+      "total_alerts": 0,
+      "observed_relevant_alerts": []
+    }
+  ],
+  "limitations": [
+    "the corpus is a synthetic baseline and does not represent the full diversity or volume of production traffic",
+    "the positive oracles are bound to four ET/Open identities in one reviewed ruleset snapshot",
+    "offline replay does not exercise AF_PACKET load, IPS/NFQUEUE behavior, encrypted payload inspection, or packet loss"
+  ]
+}
