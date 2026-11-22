@@ -1,3 +1,4 @@
+import os
 import uuid
 from pathlib import Path
 
@@ -92,3 +93,19 @@ def test_secure_directory_rejects_symlink_component(tmp_path: Path) -> None:
     with pytest.raises(StateStoreError, match="unsafe"):
         ensure_secure_directory(linked_root / "state")
     assert list(outside.iterdir()) == []
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses search-only directory permissions")
+def test_secure_directory_can_traverse_without_listing_parent(tmp_path: Path) -> None:
+    parent = tmp_path / "operators"
+    monitor = parent / "monitor"
+    monitor.mkdir(parents=True, mode=0o700)
+    parent.chmod(0o111)
+    try:
+        with pytest.raises(PermissionError):
+            list(parent.iterdir())
+        ensure_secure_directory(monitor / "outbox", mode=0o700)
+        assert (monitor / "outbox").is_dir()
+        assert parent.stat().st_mode & 0o777 == 0o111
+    finally:
+        parent.chmod(0o700)

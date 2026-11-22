@@ -16,7 +16,7 @@ def test_monitor_qualification_passes_all_transition_and_integrity_checks() -> N
     report = qualify()
 
     assert report["status"] == "monitoring-qualified"
-    assert report["project_version"] == "2.0.0.dev24"
+    assert report["project_version"] == "2.0.0.dev25"
     assert len(report["checks"]) == 7
     assert all(check["status"] == "passed" for check in report["checks"])
     assert report["checks"][1]["details"]["transition_emitted"] is False
@@ -38,7 +38,7 @@ def test_monitor_qualification_conforms_to_schema() -> None:
         (SOURCE_ROOT / "qualification-evidence/monitoring-dev22.json").read_text()
     )
     jsonschema.validate(recorded, schema)
-    assert recorded | {"project_version": "2.0.0.dev24"} == qualify()
+    assert recorded | {"project_version": "2.0.0.dev25"} == qualify()
 
 
 def test_monitor_qualification_cli_emits_one_report() -> None:

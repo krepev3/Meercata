@@ -183,7 +183,9 @@ def ensure_secure_directory(path: Path, mode: int = 0o750) -> None:
     """Create/open an absolute directory path without following symlinks."""
     if not path.is_absolute():
         raise StateStoreError("managed directory path must be absolute")
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+    # Ancestors intentionally grant the monitor search permission only. O_PATH
+    # supports dir_fd traversal without requiring directory listing permission.
+    flags = getattr(os, "O_PATH", os.O_RDONLY) | os.O_DIRECTORY | os.O_CLOEXEC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     directory_fd = os.open("/", flags)

@@ -2,6 +2,46 @@
 
 All notable v2 changes are recorded here. Entries must state the scope, affected production requirement, verification performed, and rollback or compatibility impact.
 
+## 2026-11-22 — Dev25 installed monitoring and retention qualification
+
+### Scope and production requirement
+
+- Add a guarded two-stage Debian 13 VM qualifier for the installed monitor,
+  freshness, delivery, and delivery-health services and their stock timers.
+- Exercise service-user isolation, root-owned credentials, real HTTPS and
+  token/CA rotation, three-minute scheduler staleness, twelve retained log
+  generations, bounded ENOSPC with preserved state, restart, and reboot recovery.
+- Bind observations to the current boot and exact systemd service invocation;
+  seal prepare evidence before reboot and reject changed package/file identities.
+- Add a strict fifteen-check evidence schema, installed Python launcher, package
+  inventory, negative guard/state tests, and the disposable-VM operating procedure.
+- Advance the package to `2.0.0.dev25`. Preserve historical evidence; allow the
+  deterministic monitoring/TLS schemas to validate new-version reruns explicitly.
+- Correct directory traversal to use Linux path descriptors: the installed
+  monitor can reach its owned child directories through execute-only parent
+  ACLs without gaining parent-directory listing or operator-group privileges.
+
+### Verification and acceptance
+
+- Require the full Python regression suite and deterministic Debian package
+  verification. Record actual counts, hashes, VM checks and limitations in the
+  separate dev25 report and `qualification-evidence/` artifacts.
+- Accept the VM milestone only after all fifteen checks, a changed kernel boot
+  ID, four triggered post-reboot timers, zero remaining pending/dead-letter work,
+  restored protected files, disabled qualification timers, and removed test keys.
+
+### Compatibility and rollback
+
+- Existing runtime commands, JSON contracts, unit schedules, and public mutation
+  gates are preserved. This milestone adds qualification tooling, not public IPS
+  activation, rule promotion, a production collector, or full v1 feature migration.
+- The test operates only in a guarded disposable guest. Cleanup restores its
+  original controller configuration, removes disposable credentials/private keys,
+  recovers Suricata and disables test timers while preserving monitor data.
+- Reverting the qualifier, launcher/schema inventory and version changes requires
+  no runtime-data migration. Soak, external collector, deployment capacity and
+  release operations remain separate gates.
+
 ## Unreleased — Terminal operator menu after dev24 (2026-11-08)
 
 ### Scope and production requirement

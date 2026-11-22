@@ -16,7 +16,7 @@ def test_monitor_delivery_qualification_passes_all_durable_delivery_checks() -> 
     report = qualify()
 
     assert report["status"] == "monitor-delivery-qualified"
-    assert report["project_version"] == "2.0.0.dev24"
+    assert report["project_version"] == "2.0.0.dev25"
     assert len(report["checks"]) == 8
     assert all(check["status"] == "passed" for check in report["checks"])
     assert report["checks"][2]["details"] == {

@@ -19,7 +19,7 @@
       "const": "monitor-tls-qualified"
     },
     "project_version": {
-      "const": "2.0.0.dev24"
+      "enum": ["2.0.0.dev24", "2.0.0.dev25"]
     },
     "checks": {
       "type": "array",

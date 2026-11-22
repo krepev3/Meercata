@@ -51,6 +51,8 @@ def test_builder_stages_and_verifies_complete_deterministic_image(
     assert "/usr/lib/meercata/bin/meercata-monitor-qualifier" in paths
     assert "/usr/lib/meercata/bin/meercata-monitor-delivery-qualifier" in paths
     assert "/usr/lib/meercata/bin/meercata-monitor-tls-qualifier" in paths
+    assert "/usr/lib/meercata/bin/meercata-monitor-systemd-vm-qualifier" in paths
+    assert "/usr/share/meercata/schemas/monitor-systemd-vm-qualification-v1.schema.json" in paths
     assert "/usr/share/meercata/schemas/monitor-tls-qualification-v1.schema.json" in paths
     assert "/usr/lib/meercata/bin/meercata-ips-engine" in paths
     assert "/usr/lib/meercata/bin/meercata-ips-bootstrap" in paths

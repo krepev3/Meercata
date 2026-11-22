@@ -27,7 +27,7 @@ def test_real_tls_delivery_and_health_gate_matches_recorded_evidence(tls_report)
     recorded = json.loads((ROOT / "qualification-evidence/monitor-tls-dev24.json").read_text())
     jsonschema.validate(tls_report, schema)
     jsonschema.validate(recorded, schema)
-    assert tls_report == recorded
+    assert tls_report == recorded | {"project_version": qualifier.__version__}
     serialized = json.dumps(tls_report)
     assert qualifier.TOKEN_CURRENT not in serialized
     assert qualifier.TOKEN_RETIRED not in serialized

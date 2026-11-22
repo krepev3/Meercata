@@ -8,7 +8,7 @@
   "properties": {
     "schema_version": { "const": 1 },
     "status": { "const": "monitor-delivery-qualified" },
-    "project_version": { "enum": ["2.0.0.dev23", "2.0.0.dev24"] },
+    "project_version": { "enum": ["2.0.0.dev23", "2.0.0.dev24", "2.0.0.dev25"] },
     "checks": {
       "type": "array",
       "minItems": 8,

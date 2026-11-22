@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meercata"
-version = "2.0.0.dev24"
+version = "2.0.0.dev25"
 description = "CLI-only transactional control plane for Suricata"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }

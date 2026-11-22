@@ -190,3 +190,12 @@ These are real HTTPS connections to a disposable local collector. They do not
 qualify a production collector, production secrets, external DNS, proxies,
 clustered deduplication, remote availability, or installed watchdog execution
 under systemd PID 1. Those and the 24–72-hour retention/soak gate remain open.
+
+## Dev25 installed monitoring and retention gate
+
+The two-stage [Debian 13 VM qualifier](MONITOR-SYSTEMD-VM.md) exercises the
+installed producer, both watchdogs, HTTPS worker, stock timers, service-user
+access, token/CA replacement, bounded log-filesystem ENOSPC, forced retention,
+and reboot recovery. Its fifteen-check evidence is separate from the historical
+dev24 loopback result. It does not replace production collector, deployment
+capacity, whole-root disk failure, or 24–72-hour soak qualification.

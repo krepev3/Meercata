@@ -1,0 +1,1109 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "monitor-systemd-vm-qualified"
+    },
+    "project_version": {
+      "const": "2.0.0.dev25"
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "os_id": {
+          "const": "debian"
+        },
+        "version_id": {
+          "const": "13"
+        },
+        "architecture": {
+          "const": "x86_64"
+        },
+        "pid1": {
+          "const": "systemd"
+        },
+        "virtualization": {
+          "enum": [
+            "qemu",
+            "kvm"
+          ]
+        },
+        "cloud_image_sha512": {
+          "const": "37cb32b320820417eb04b335afcf489bfb4cecce4a957190d09cb2bffbe02b56a1cadd62d78c6ead92aa7839d5ea65e4260f994bbb4b54490df59fdf11ee1d97"
+        },
+        "effective_uid": {
+          "const": 0
+        },
+        "effective_gid": {
+          "const": 0
+        }
+      },
+      "required": [
+        "os_id",
+        "version_id",
+        "architecture",
+        "pid1",
+        "virtualization",
+        "cloud_image_sha512",
+        "effective_uid",
+        "effective_gid"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "platform.vm"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "os_id": {
+                  "const": "debian"
+                },
+                "version_id": {
+                  "const": "13"
+                },
+                "architecture": {
+                  "const": "x86_64"
+                },
+                "pid1": {
+                  "const": "systemd"
+                },
+                "virtualization": {
+                  "enum": [
+                    "qemu",
+                    "kvm"
+                  ]
+                },
+                "cloud_image_sha512": {
+                  "const": "37cb32b320820417eb04b335afcf489bfb4cecce4a957190d09cb2bffbe02b56a1cadd62d78c6ead92aa7839d5ea65e4260f994bbb4b54490df59fdf11ee1d97"
+                },
+                "effective_uid": {
+                  "const": 0
+                },
+                "effective_gid": {
+                  "const": 0
+                }
+              },
+              "required": [
+                "os_id",
+                "version_id",
+                "architecture",
+                "pid1",
+                "virtualization",
+                "cloud_image_sha512",
+                "effective_uid",
+                "effective_gid"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "packages.installed"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "meercata": {
+                  "const": "2.0.0~dev25-1"
+                },
+                "suricata": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "suricata-update": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "systemd": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "logrotate": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "meercata",
+                "suricata",
+                "suricata-update",
+                "systemd",
+                "logrotate"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "permissions.isolation"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "service_user": {
+                  "const": "meercata"
+                },
+                "credentials_readable": {
+                  "const": true
+                },
+                "privileged_state_denied": {
+                  "const": true
+                },
+                "configuration_write_denied": {
+                  "const": true
+                },
+                "services_checked": {
+                  "const": 4
+                }
+              },
+              "required": [
+                "service_user",
+                "credentials_readable",
+                "privileged_state_denied",
+                "configuration_write_denied",
+                "services_checked"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "monitoring.systemd"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "const": "healthy"
+                },
+                "service_user": {
+                  "const": "meercata"
+                },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "journal_json": {
+                  "const": true
+                }
+              },
+              "required": [
+                "status",
+                "service_user",
+                "sequence",
+                "journal_json"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "delivery.systemd"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "delivered": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "pending": {
+                  "const": 0
+                },
+                "collector_events": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "verified_tls": {
+                  "const": true
+                }
+              },
+              "required": [
+                "delivered",
+                "pending",
+                "collector_events",
+                "verified_tls"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "credentials.rotation"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "retired_http_status": {
+                  "const": 401
+                },
+                "installed_delivery_reloaded": {
+                  "const": true
+                },
+                "credential_mode": {
+                  "const": "0640"
+                },
+                "credential_root_owned": {
+                  "const": true
+                }
+              },
+              "required": [
+                "retired_http_status",
+                "installed_delivery_reloaded",
+                "credential_mode",
+                "credential_root_owned"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "tls.ca-rotation"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "retired_ca_blocked": {
+                  "const": true
+                },
+                "rotated_ca_delivered": {
+                  "const": true
+                },
+                "pending_before_reboot": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "retired_ca_blocked",
+                "rotated_ca_delivered",
+                "pending_before_reboot"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "scheduler.freshness"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "producer_timer_stopped": {
+                  "const": true
+                },
+                "stale_exit_code": {
+                  "const": 2
+                },
+                "age_seconds": {
+                  "type": "integer",
+                  "minimum": 181
+                },
+                "recovered_exit_code": {
+                  "const": 0
+                }
+              },
+              "required": [
+                "producer_timer_stopped",
+                "stale_exit_code",
+                "age_seconds",
+                "recovered_exit_code"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "retention.rotation"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forced_rotations": {
+                  "const": 14
+                },
+                "generations_per_log": {
+                  "const": 12
+                },
+                "compressed_generations_per_log": {
+                  "const": 11
+                },
+                "active_mode": {
+                  "const": "0600"
+                },
+                "state_preserved": {
+                  "const": true
+                },
+                "installed_writers_recovered": {
+                  "const": true
+                }
+              },
+              "required": [
+                "forced_rotations",
+                "generations_per_log",
+                "compressed_generations_per_log",
+                "active_mode",
+                "state_preserved",
+                "installed_writers_recovered"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "storage.full"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tmpfs_bytes": {
+                  "const": 65536
+                },
+                "enospc_observed": {
+                  "const": true
+                },
+                "installed_producer_exit_code": {
+                  "const": 3
+                },
+                "state_preserved": {
+                  "const": true
+                },
+                "recovered_exit_code": {
+                  "const": 0
+                }
+              },
+              "required": [
+                "tmpfs_bytes",
+                "enospc_observed",
+                "installed_producer_exit_code",
+                "state_preserved",
+                "recovered_exit_code"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "recovery.restart"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sequence_preserved": {
+                  "const": true
+                },
+                "duplicate_transition": {
+                  "const": false
+                },
+                "pending": {
+                  "const": 0
+                }
+              },
+              "required": [
+                "sequence_preserved",
+                "duplicate_transition",
+                "pending"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "timers.before-reboot"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "timers": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "meercata-monitor.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-freshness.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-delivery.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-delivery-health.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "meercata-monitor.timer",
+                    "meercata-monitor-freshness.timer",
+                    "meercata-monitor-delivery.timer",
+                    "meercata-monitor-delivery-health.timer"
+                  ]
+                }
+              },
+              "required": [
+                "timers"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "reboot.monitoring"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "before_boot_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"
+                },
+                "after_boot_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"
+                },
+                "timers": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "meercata-monitor.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-freshness.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-delivery.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    },
+                    "meercata-monitor-delivery-health.timer": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "active": {
+                          "const": true
+                        },
+                        "triggered_this_boot": {
+                          "const": true
+                        },
+                        "service_exit_code": {
+                          "const": 0
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "active",
+                        "triggered_this_boot",
+                        "service_exit_code"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "meercata-monitor.timer",
+                    "meercata-monitor-freshness.timer",
+                    "meercata-monitor-delivery.timer",
+                    "meercata-monitor-delivery-health.timer"
+                  ]
+                },
+                "pending": {
+                  "const": 0
+                },
+                "dead_letters": {
+                  "const": 0
+                },
+                "sequence_before": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sequence_after": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "recovered_events": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                "recovered_event_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1000,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "required": [
+                "before_boot_id",
+                "after_boot_id",
+                "timers",
+                "pending",
+                "dead_letters",
+                "sequence_before",
+                "sequence_after",
+                "recovered_events",
+                "recovered_event_ids"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "protected.integrity"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "files": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "configuration": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "mode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes",
+                        "mode"
+                      ]
+                    },
+                    "suricata_configuration": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "mode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes",
+                        "mode"
+                      ]
+                    },
+                    "rules": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "mode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes",
+                        "mode"
+                      ]
+                    },
+                    "manifest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "mode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes",
+                        "mode"
+                      ]
+                    },
+                    "sudoers": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "mode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes",
+                        "mode"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "configuration",
+                    "suricata_configuration",
+                    "rules",
+                    "manifest",
+                    "sudoers"
+                  ]
+                }
+              },
+              "required": [
+                "files"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check_id": {
+              "const": "cleanup.disabled"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "disabled_timers": {
+                  "const": 4
+                },
+                "inactive_timers": {
+                  "const": 4
+                },
+                "credentials_removed": {
+                  "const": true
+                },
+                "suricata_recovered": {
+                  "const": true
+                }
+              },
+              "required": [
+                "disabled_timers",
+                "inactive_timers",
+                "credentials_removed",
+                "suricata_recovered"
+              ]
+            }
+          },
+          "required": [
+            "check_id",
+            "status",
+            "details"
+          ]
+        }
+      ],
+      "items": false
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "project_version",
+    "platform",
+    "checks",
+    "limitations"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meercata.invalid/schemas/monitor-systemd-vm-qualification-v1.schema.json",
+  "title": "Meercata installed monitoring and retention VM qualification"
+}

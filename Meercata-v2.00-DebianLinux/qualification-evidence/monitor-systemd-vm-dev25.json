@@ -1,0 +1,264 @@
+{
+  "checks": [
+    {
+      "check_id": "platform.vm",
+      "details": {
+        "architecture": "x86_64",
+        "cloud_image_sha512": "37cb32b320820417eb04b335afcf489bfb4cecce4a957190d09cb2bffbe02b56a1cadd62d78c6ead92aa7839d5ea65e4260f994bbb4b54490df59fdf11ee1d97",
+        "effective_gid": 0,
+        "effective_uid": 0,
+        "os_id": "debian",
+        "pid1": "systemd",
+        "version_id": "13",
+        "virtualization": "kvm"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "packages.installed",
+      "details": {
+        "logrotate": "3.22.0-1",
+        "meercata": "2.0.0~dev25-1",
+        "suricata": "1:8.0.8-1~bpo13+2",
+        "suricata-update": "1.3.8-1~bpo13+1",
+        "systemd": "257.13-1~deb13u1"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "permissions.isolation",
+      "details": {
+        "configuration_write_denied": true,
+        "credentials_readable": true,
+        "privileged_state_denied": true,
+        "service_user": "meercata",
+        "services_checked": 4
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "monitoring.systemd",
+      "details": {
+        "journal_json": true,
+        "sequence": 1,
+        "service_user": "meercata",
+        "status": "healthy"
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "delivery.systemd",
+      "details": {
+        "collector_events": 1,
+        "delivered": 1,
+        "pending": 0,
+        "verified_tls": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "credentials.rotation",
+      "details": {
+        "credential_mode": "0640",
+        "credential_root_owned": true,
+        "installed_delivery_reloaded": true,
+        "retired_http_status": 401
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "tls.ca-rotation",
+      "details": {
+        "pending_before_reboot": 2,
+        "retired_ca_blocked": true,
+        "rotated_ca_delivered": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "scheduler.freshness",
+      "details": {
+        "age_seconds": 182,
+        "producer_timer_stopped": true,
+        "recovered_exit_code": 0,
+        "stale_exit_code": 2
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "retention.rotation",
+      "details": {
+        "active_mode": "0600",
+        "compressed_generations_per_log": 11,
+        "forced_rotations": 14,
+        "generations_per_log": 12,
+        "installed_writers_recovered": true,
+        "state_preserved": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "storage.full",
+      "details": {
+        "enospc_observed": true,
+        "installed_producer_exit_code": 3,
+        "recovered_exit_code": 0,
+        "state_preserved": true,
+        "tmpfs_bytes": 65536
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "recovery.restart",
+      "details": {
+        "duplicate_transition": false,
+        "pending": 0,
+        "sequence_preserved": true
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "timers.before-reboot",
+      "details": {
+        "timers": {
+          "meercata-monitor-delivery-health.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor-delivery.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor-freshness.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          }
+        }
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "reboot.monitoring",
+      "details": {
+        "after_boot_id": "41c13f34-ac2b-471b-921b-54bcb2d8e9cf",
+        "before_boot_id": "10ea3e76-cbbc-4522-915c-a33937fef0ac",
+        "dead_letters": 0,
+        "pending": 0,
+        "recovered_event_ids": [
+          "3738426f460f15e11b387c1be649be43088f2e00568aacdf0dfe1e28119778f9",
+          "fa108f87c26c8cae1bc62584b2f944cca0d362b4b8a66335e3785edbc6376917"
+        ],
+        "recovered_events": 2,
+        "sequence_after": 9,
+        "sequence_before": 9,
+        "timers": {
+          "meercata-monitor-delivery-health.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor-delivery.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor-freshness.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          },
+          "meercata-monitor.timer": {
+            "active": true,
+            "enabled": true,
+            "service_exit_code": 0,
+            "triggered_this_boot": true
+          }
+        }
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "protected.integrity",
+      "details": {
+        "files": {
+          "configuration": {
+            "mode": "0640",
+            "path": "/etc/meercata/meercata.toml",
+            "sha256": "51bf8ab1b1f2f20416b635d2f5e1d1a2f3f3c4a2ac4d2065a80fc86e42a61671",
+            "size_bytes": 56
+          },
+          "manifest": {
+            "mode": "0644",
+            "path": "/usr/lib/meercata/package-manifest.json",
+            "sha256": "3d457b648e722704f09fe934d0c506ad759fa66cbb2975355957cf799c5f3d50",
+            "size_bytes": 29995
+          },
+          "rules": {
+            "mode": "0644",
+            "path": "/var/lib/suricata/rules/suricata.rules",
+            "sha256": "a1e0cd2ea86d5b4517c06848d8c01a3ea83dc297535c5941f223d9c62a324ca8",
+            "size_bytes": 92
+          },
+          "sudoers": {
+            "mode": "0440",
+            "path": "/etc/sudoers.d/meercata",
+            "sha256": "aa616b0f7aca32bde7a3f994f0e784e5cbbfe60b8ba124d22f83ced37fc22234",
+            "size_bytes": 838
+          },
+          "suricata_configuration": {
+            "mode": "0644",
+            "path": "/etc/suricata/suricata.yaml",
+            "sha256": "5abaa3093a3a2838f19d6215fe270f59c7ac830b3a113885c2f2af526efd3e8d",
+            "size_bytes": 10717
+          }
+        }
+      },
+      "status": "passed"
+    },
+    {
+      "check_id": "cleanup.disabled",
+      "details": {
+        "credentials_removed": true,
+        "disabled_timers": 4,
+        "inactive_timers": 4,
+        "suricata_recovered": true
+      },
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "installed only in a disposable checksum-pinned Debian 13 QEMU/KVM guest",
+    "loopback collector, generated credentials, and generated CAs only; no production collector or external DNS/proxy was qualified",
+    "forced rotations prove finite generation retention, not elapsed weekly retention or a 24\u201372-hour soak",
+    "disk-full injection covered a bounded log tmpfs; whole-root exhaustion, power loss, and storage hardware failures remain open",
+    "deployment traffic capacity, NIC/multi-queue behavior, release signing custody, and public mutation gates remain separate"
+  ],
+  "platform": {
+    "architecture": "x86_64",
+    "cloud_image_sha512": "37cb32b320820417eb04b335afcf489bfb4cecce4a957190d09cb2bffbe02b56a1cadd62d78c6ead92aa7839d5ea65e4260f994bbb4b54490df59fdf11ee1d97",
+    "effective_gid": 0,
+    "effective_uid": 0,
+    "os_id": "debian",
+    "pid1": "systemd",
+    "version_id": "13",
+    "virtualization": "kvm"
+  },
+  "project_version": "2.0.0.dev25",
+  "schema_version": 1,
+  "status": "monitor-systemd-vm-qualified"
+}

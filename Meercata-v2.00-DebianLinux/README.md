@@ -4,9 +4,14 @@ Meercata v2.00 is the production-hardening track for the Python Suricata control
 
 ## Current status
 
-**Phase 4 monitoring-delivery foundations and the Phase 5 installed fail-open IPS lifecycle gates are complete through dev24 — not production-ready.**
+**Phase 4 monitoring-delivery foundations and the Phase 5 installed fail-open IPS lifecycle gates are complete through dev24; dev25 adds installed monitoring/retention qualification — not production-ready.**
 
 The Python package provides durable transaction primitives, recovery inspection, versioned read-only health collection, isolated RuleOps qualification, socket mediation, and package-owned privilege/supervision. Dev12–dev22 qualified readiness, RuleOps, regression, repository delivery, recovery, fail-open nftables/NFQUEUE, bounded overload, the installed private IPS lifecycle, and durable local monitoring. Dev23 adds scheduled-run freshness, a crash-safe bounded outbox, verified-HTTPS connector contract, exponential retry, durable receipts, and dead letters. Dev24 qualifies real loopback HTTPS, token/CA rotation, collector deduplication, persistent outage recovery, and a delivery-pressure watchdog. Public live rule promotion and IPS activation remain deliberately absent from the CLI while real collector/credential availability, deployment-specific capacity, soak, and release-operations gates remain open.
+
+Dev25 provides a two-stage disposable Debian 13 VM gate for installed monitoring,
+service-user permissions, credential/CA rotation, timer freshness, log retention,
+bounded disk-full behavior, and reboot recovery. See [the VM procedure](MONITOR-SYSTEMD-VM.md)
+and the separately recorded dev25 evidence/report for the executed results.
 
 ## Implemented CLI
 
@@ -79,7 +84,7 @@ editing, editable defaults, and service/firewall mutations are visibly marked
 unavailable or gated. **Health-transition events are not threat-alert evidence.**
 Public rule promotion remains gated. This restores terminal navigation, not all
 v1 functionality. It adds no runtime dependency and does not change the frozen
-dev24 evidence or complete dev25's installed monitoring/retention VM gate.
+dev24 evidence. Dev25's installed monitoring/retention VM gate is a separate milestone.
 
 ## Implemented Phase 1 foundation
 
@@ -205,6 +210,7 @@ Suricata + kernel packet-processing data plane
 - [Crash and reboot recovery qualification](RECOVERY-VM.md)
 - [Installed IPS systemd lifecycle](IPS-SYSTEMD.md)
 - [Durable monitoring contract](MONITORING.md)
+- [Installed monitoring and retention VM qualification](MONITOR-SYSTEMD-VM.md)
 - [Suricata package qualification](SURICATA-PACKAGES.md)
 - [Staged-image qualification contract](QUALIFICATION.md)
 - [Change log](CHANGELOG.md)

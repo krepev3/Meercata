@@ -232,6 +232,16 @@ Dev23 adds an independently scheduled three-minute freshness watchdog plus a roo
 
 Dev24 adds twelve passing real loopback TLS and delivery-health checks: verified trust and hostname refusal, token retirement/acceptance, duplicate processing suppression, retry persistence across worker restart, collector recovery, CA rotation, and healthy/degraded/critical delivery pressure. The ordinary config/token/CA loader is exercised; the independent watchdog requires no credentials or network. The remaining real-collector, installed timer execution, retention/soak, and deployment availability gates remain mandatory.
 
+Dev25 qualification scope: execute the installed producer, freshness watchdog, HTTPS
+worker, and delivery-health watchdog under real systemd PID 1 in a disposable
+Debian 13 VM; qualify root/service credential isolation, token/CA replacement,
+real elapsed staleness, twelve-generation rotation, a bounded ENOSPC failure,
+unchanged durable state, restarted writers, and all four stock timers after
+reboot. Executed results are recorded separately in the dev25 report and
+`monitor-systemd-vm-qualification-v1` evidence. Real external collectors,
+whole-root disk exhaustion, elapsed long-duration retention/soak, hardware
+capacity, and release operations remain deployment gates.
+
 ### Phase 5 — Transactional IDS/IPS lifecycle
 
 Deliverables:

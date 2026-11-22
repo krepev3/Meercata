@@ -62,7 +62,7 @@ def test_qualifier_passes_all_disposable_root_checks_without_changing_stage(
     report = StagedImageQualifier(SOURCE_ROOT, stage).qualify()
 
     assert report["status"] == "staged-qualified"
-    assert report["version"] == "2.0.0.dev24"
+    assert report["version"] == "2.0.0.dev25"
     assert [item["check_id"] for item in report["checks"]] == [
         "package.manifest",
         "python.imports",

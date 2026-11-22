@@ -36,12 +36,12 @@ def test_debian_builder_creates_reproducible_verified_binary_packages(
     second_path = workspace / "second" / second["artifact"]
 
     assert first["status"] == "built-and-verified"
-    assert first["project_version"] == "2.0.0.dev24"
-    assert first["debian_version"] == "2.0.0~dev24-1"
+    assert first["project_version"] == "2.0.0.dev25"
+    assert first["debian_version"] == "2.0.0~dev25-1"
     assert first["architecture"] == "all"
     assert first["verification"] == {
         "package": "meercata",
-        "version": "2.0.0~dev24-1",
+        "version": "2.0.0~dev25-1",
         "architecture": "all",
         "root_owned_archive_entries": True,
         "manifest_files": first["payload_files"],
@@ -244,8 +244,8 @@ def test_debian_revision_produces_ordered_upgrade_artifact(workspace: Path) -> N
         SOURCE_ROOT, workspace / "second", debian_revision=2
     ).build()
 
-    assert first["debian_version"] == "2.0.0~dev24-1"
-    assert second["debian_version"] == "2.0.0~dev24-2"
+    assert first["debian_version"] == "2.0.0~dev25-1"
+    assert second["debian_version"] == "2.0.0~dev25-2"
     assert first["sha256"] != second["sha256"]
 
 
