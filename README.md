@@ -37,6 +37,18 @@ For a running Suricata Windows service, use **Suricata control -> Status** and *
 
 The validated v1.00 deployment is a passive IDS: it detects and logs traffic but does not block it. Windows inline IPS requires a Suricata build with WinDivert enabled.
 
+## Research and validation portfolio
+
+Meercata is also documented as an **applied network security research project**. These documents separate engineering work visible in source from independently reproduced lab results.
+
+- [Research portfolio — goals, scope, and claims](docs/RESEARCH_PORTFOLIO.md)
+- [System architecture and evidence interpretation](docs/ARCHITECTURE.md)
+- [Experimental validation plan and report template](docs/VALIDATION_PLAN.md)
+- [Dated research log and claims ledger](docs/RESEARCH_LOG.md)
+- [Evidence-gated research roadmap](docs/ROADMAP.md)
+
+**Evidence note:** Windows passive IDS is the released v1.00 scope. Source code, unit tests, and README statements do not on their own establish live network detection effectiveness, inline packet blocking, or production readiness. Research experiments and results will be published with environment information, reproducible steps, and limitations.
+
 ## Linux roadmap
 
 Meercata v2 for Linux is a separate work in progress and is not part of this Windows v1.00 release.
